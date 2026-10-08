@@ -1,0 +1,15 @@
+// ========================================================
+// Prisma Schema Foundation - Autonomous Lead-to-Deal CRM
+// ========================================================
+// Phase 1: High-level database architecture defined in docs/DATABASE_DESIGN.md
+// Phase 2: Full relational data models (User, Role, Company, Lead, LeadActivity,
+//          LeadScore, Deal, PipelineStage, Recommendation, AuditLog) will be created.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
