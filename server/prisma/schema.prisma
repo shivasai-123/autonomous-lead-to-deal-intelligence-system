@@ -1,9 +1,9 @@
 // ========================================================
-// Prisma Schema Foundation - Autonomous Lead-to-Deal CRM
+// Prisma Schema - Autonomous Lead-to-Deal Intelligence System
 // ========================================================
-// Phase 1: High-level database architecture defined in docs/DATABASE_DESIGN.md
-// Phase 2: Full relational data models (User, Role, Company, Lead, LeadActivity,
-//          LeadScore, Deal, PipelineStage, Recommendation, AuditLog) will be created.
+// Phase 2: Relational PostgreSQL Schema Definition
+// Production-grade SaaS CRM data models with referential integrity,
+// indexes, auditability, and intelligence extensibility.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,4 +12,331 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// --------------------------------------------------------
+// ENUMS
+// --------------------------------------------------------
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  UNQUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActivityType {
+  WEBSITE_VISIT
+  PRICING_PAGE_VIEW
+  BROCHURE_DOWNLOAD
+  EMAIL_OPEN
+  EMAIL_REPLY
+  DEMO_REQUEST
+  CALL
+  MEETING
+  FORM_SUBMISSION
+  OTHER
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+}
+
+enum RecommendationType {
+  CONTACT_LEAD
+  SEND_FOLLOW_UP
+  SCHEDULE_DEMO
+  REVIEW_STALLED_LEAD
+  OTHER
+}
+
+enum RecommendationStatus {
+  PENDING
+  ACCEPTED
+  DISMISSED
+  EXECUTED
+}
+
+enum NotificationType {
+  LEAD_ASSIGNED
+  SCORE_THRESHOLD_REACHED
+  RECOMMENDATION_GENERATED
+  DEAL_STAGE_CHANGED
+  SYSTEM_ALERT
+}
+
+// --------------------------------------------------------
+// MODELS
+// --------------------------------------------------------
+
+/// User accounts for CRM access across roles (Admin, Sales Manager, Sales Rep).
+model User {
+  id           String   @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String   @unique
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Role relation (Restricts deletion if users are assigned)
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  // Reverse relations
+  assignedLeads           Lead[]           @relation("AssignedLeads")
+  createdActivities       LeadActivity[]   @relation("CreatedActivities")
+  assignedDeals           Deal[]           @relation("AssignedDeals")
+  assignedRecommendations Recommendation[] @relation("AssignedRecommendations")
+  notifications           Notification[]   @relation("UserNotifications")
+  auditLogs               AuditLog[]       @relation("UserAuditLogs")
+
+  @@index([email])
+  @@index([roleId])
+  @@map("users")
+}
+
+/// Role-based access control definitions (ADMIN, SALES_MANAGER, SALES_REPRESENTATIVE).
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users User[]
+
+  @@map("roles")
+}
+
+/// Organization or account records associated with leads and deals.
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  industry  String?
+  website   String?
+  phone     String?
+  email     String?
+  address   String?
+  city      String?
+  country   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leads Lead[]
+  deals Deal[]
+
+  @@index([name])
+  @@map("companies")
+}
+
+/// Prospective sales contacts and qualification lifecycle.
+model Lead {
+  id        String       @id @default(uuid())
+  firstName String
+  lastName  String
+  email     String
+  phone     String?
+  jobTitle  String?
+  source    String?
+  status    LeadStatus   @default(NEW)
+  priority  LeadPriority @default(MEDIUM)
+  score     Int          @default(0)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  // Company relation (nullable: lead can exist before company association)
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  // Assigned Sales Representative
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedLeads", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  // Relationships
+  activities      LeadActivity[]
+  scoreHistory    LeadScore[]
+  deals           Deal[]
+  recommendations Recommendation[]
+
+  @@index([email])
+  @@index([companyId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([score])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+/// Engagement and interaction events recorded against leads.
+model LeadActivity {
+  id          String       @id @default(uuid())
+  type        ActivityType
+  description String?
+  metadata    Json?
+  occurredAt  DateTime     @default(now())
+  createdAt   DateTime     @default(now())
+
+  // Lead relation (Deleting a lead cascades activities)
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  // Logging User (optional: web visits may be logged without a user)
+  createdById String?
+  createdBy   User?   @relation("CreatedActivities", fields: [createdById], references: [id], onDelete: SetNull)
+
+  // Reverse relation for score causation tracking
+  triggeredScores LeadScore[]
+
+  @@index([leadId])
+  @@index([occurredAt])
+  @@index([type])
+  @@map("lead_activities")
+}
+
+/// Explainable scoring history tracking why and when lead scores fluctuate.
+model LeadScore {
+  id        String   @id @default(uuid())
+  score     Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  // Lead relation (Deleting a lead cascades scores)
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  // Optional reference to the causal activity
+  sourceActivityId String?
+  sourceActivity   LeadActivity? @relation(fields: [sourceActivityId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([createdAt])
+  @@map("lead_scores")
+}
+
+/// Ordered lifecycle milestones within the sales pipeline.
+model PipelineStage {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  order       Int      @unique
+  probability Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deals Deal[]
+
+  @@index([order])
+  @@map("pipeline_stages")
+}
+
+/// Commercial opportunities and deal pipeline progress.
+model Deal {
+  id                String     @id @default(uuid())
+  title             String
+  value             Decimal    @db.Decimal(12, 2)
+  currency          String     @default("USD")
+  expectedCloseDate DateTime?
+  description       String?
+  status            DealStatus @default(OPEN)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  // Lead origin relation
+  leadId String?
+  lead   Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  // Company relation
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  // Deal Owner / Sales Representative
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedDeals", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  // Current Pipeline Stage (Restricts deleting active stages with deals)
+  pipelineStageId String
+  pipelineStage   PipelineStage @relation(fields: [pipelineStageId], references: [id], onDelete: Restrict)
+
+  @@index([leadId])
+  @@index([companyId])
+  @@index([assignedToId])
+  @@index([pipelineStageId])
+  @@index([status])
+  @@map("deals")
+}
+
+/// Actionable Next-Best-Action intelligence items surfaced for sales reps.
+model Recommendation {
+  id          String               @id @default(uuid())
+  type        RecommendationType
+  title       String
+  explanation String
+  confidence  Float?
+  status      RecommendationStatus @default(PENDING)
+  createdAt   DateTime             @default(now())
+  expiresAt   DateTime?
+
+  // Lead relation (Deleting lead cascades recommendations)
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  // Assigned Sales Representative
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedRecommendations", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([assignedToId])
+  @@index([status])
+  @@map("recommendations")
+}
+
+/// User alert feeds for critical real-time sales events.
+model Notification {
+  id        String           @id @default(uuid())
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  // Recipient User
+  userId String
+  user   User   @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+/// Immutable system event audit trail recording critical changes.
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  // Actor User (SetNull if user is deleted)
+  userId String?
+  user   User?   @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
