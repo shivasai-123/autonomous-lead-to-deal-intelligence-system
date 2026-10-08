@@ -21,7 +21,7 @@ export function HomePage() {
       <div className="bg-gradient-to-br from-white via-slate-50 to-indigo-50/40 p-8 md:p-12 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
         <div className="max-w-3xl space-y-4">
           <div className="flex items-center gap-2">
-            <Badge variant="primary">Finathon CRM-02 Platform</Badge>
+            <Badge variant="primary">Autonomous CRM Platform</Badge>
             <Badge variant="neutral">Phase 1 Foundation</Badge>
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">

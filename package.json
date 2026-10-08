@@ -1,7 +1,7 @@
 {
   "name": "autonomous-lead-to-deal-intelligence-system",
   "version": "1.0.0",
-  "description": "Autonomous Lead-to-Deal Intelligence System (CRM-02 SaaS Platform)",
+  "description": "Autonomous Lead-to-Deal Intelligence System (Production SaaS Platform)",
   "private": true,
   "workspaces": [
     "server",

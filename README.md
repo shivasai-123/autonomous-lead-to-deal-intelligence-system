@@ -1,7 +1,6 @@
 # Autonomous Lead-to-Deal Intelligence System
 
-> **A production-style SaaS CRM platform for sales teams with autonomous qualification, predictive lead scoring, next-best-action recommendations, and pipeline acceleration.**  
-> *Based on the CRM-02 Challenge Concept (Aczen Finathon).*
+> **A production-style SaaS CRM platform for sales teams with autonomous qualification, predictive lead scoring, next-best-action recommendations, and pipeline acceleration.**
 
 ---
 
