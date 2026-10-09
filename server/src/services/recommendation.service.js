@@ -9,6 +9,7 @@ import {
 } from '../config/recommendation.config.js';
 import { ScoringService } from './scoring.service.js';
 import { AuditService } from './audit.service.js';
+import { NotificationService } from './notification.service.js';
 import { logger } from '../utils/logger.js';
 
 export class RecommendationService {
@@ -412,6 +413,26 @@ export class RecommendationService {
         confidence: newRecommendation.confidence
       }
     });
+
+    // Notify assigned representative
+    if (newRecommendation.assignedToId) {
+      try {
+        await NotificationService.createNotification({
+          userId: newRecommendation.assignedToId,
+          type: 'RECOMMENDATION_GENERATED',
+          title: 'New Next-Best-Action',
+          message: `${newRecommendation.title} for ${newRecommendation.lead?.firstName || 'lead'} ${newRecommendation.lead?.lastName || ''}`.trim(),
+          metadata: {
+            recommendationId: newRecommendation.id,
+            leadId: lead.id,
+            type: newRecommendation.type,
+            link: `/recommendations`
+          }
+        });
+      } catch (notifErr) {
+        console.error(`[RecommendationService] Notification error:`, notifErr.message);
+      }
+    }
 
     return { leadId, recommendation: newRecommendation, action: 'CREATED' };
   }

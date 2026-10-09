@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Users,
   Search,
@@ -75,13 +75,15 @@ export function LeadsPage() {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // Filters
+  const [searchParams] = useSearchParams();
+
+  // Filters (hydrated from URL query params if present)
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState('');
-  const [assignedFilter, setAssignedFilter] = useState('');
-  const [classificationFilter, setClassificationFilter] = useState('');
-  const [stalledFilter, setStalledFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
+  const [priorityFilter, setPriorityFilter] = useState(searchParams.get('priority') || '');
+  const [assignedFilter, setAssignedFilter] = useState(searchParams.get('assignedToId') || '');
+  const [classificationFilter, setClassificationFilter] = useState(searchParams.get('classification') || '');
+  const [stalledFilter, setStalledFilter] = useState(searchParams.get('isStalled') || '');
   const [recalculating, setRecalculating] = useState(false);
 
   // Dropdown reference data

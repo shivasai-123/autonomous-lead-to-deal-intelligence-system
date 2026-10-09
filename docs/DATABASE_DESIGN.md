@@ -306,6 +306,7 @@ Real-time alerts and user event feed items.
 | `type` | `NotificationType` | Required | Category (`LEAD_ASSIGNED`, `SCORE_THRESHOLD_REACHED`, `RECOMMENDATION_GENERATED`, `DEAL_STAGE_CHANGED`, `SYSTEM_ALERT`) |
 | `title` | `String` | Required | Short notification title |
 | `message` | `String` | Required | Alert body narrative |
+| `metadata` | `Json?` | Nullable | Deep link, associated entity keys (`leadId`, `dealId`, `score`), and payload context |
 | `isRead` | `Boolean` | `@default(false)` | Read/unread flag |
 | `readAt` | `DateTime?` | Nullable | Timestamp when opened |
 | `userId` | `String` | Foreign Key | Recipient `User.id` |

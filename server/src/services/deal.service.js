@@ -1,6 +1,7 @@
 import { getPrismaClient } from '../config/prisma.js';
 import { AuditService } from './audit.service.js';
 import { RecommendationService } from './recommendation.service.js';
+import { NotificationService } from './notification.service.js';
 
 export class DealService {
   /**
@@ -314,6 +315,23 @@ export class DealService {
       }
     });
 
+    if (createdDeal.assignedToId) {
+      try {
+        await NotificationService.createNotification({
+          userId: createdDeal.assignedToId,
+          type: 'DEAL_STAGE_CHANGED',
+          title: 'New Deal Assigned',
+          message: `You have been assigned deal "${createdDeal.title}" in stage ${stage.name}.`,
+          metadata: {
+            dealId: createdDeal.id,
+            link: `/deals/${createdDeal.id}`
+          }
+        });
+      } catch (notifErr) {
+        console.error(`[DealService] Notification error:`, notifErr.message);
+      }
+    }
+
     return {
       ...createdDeal,
       value: Number(createdDeal.value)
@@ -537,6 +555,26 @@ export class DealService {
       }
     });
 
+    if (deal.assignedToId) {
+      try {
+        await NotificationService.createNotification({
+          userId: deal.assignedToId,
+          type: 'DEAL_STAGE_CHANGED',
+          title: auditAction === 'DEAL_WON' ? 'Deal Won!' : auditAction === 'DEAL_LOST' ? 'Deal Closed Lost' : 'Deal Stage Transitioned',
+          message: `Deal "${deal.title}" moved from ${deal.pipelineStage.name} to ${targetStage.name}${auditAction === 'DEAL_WON' ? ` ($${Number(deal.value).toLocaleString()})` : ''}.`,
+          metadata: {
+            dealId: deal.id,
+            fromStage: deal.pipelineStage.name,
+            toStage: targetStage.name,
+            status: newStatus,
+            link: `/deals/${deal.id}`
+          }
+        });
+      } catch (notifErr) {
+        console.error(`[DealService] Notification error:`, notifErr.message);
+      }
+    }
+
     // Re-fetch deal with the newly added history item included
     return this.getDealById(id, user);
   }
@@ -715,6 +753,24 @@ export class DealService {
       await RecommendationService.dismissPendingForLead(lead.id, 'Lead converted to deal', user);
     } catch (recErr) {
       console.error(`[RecommendationService] Failed to dismiss recommendations for converted lead ${lead.id}:`, recErr.message);
+    }
+
+    if (deal.assignedToId) {
+      try {
+        await NotificationService.createNotification({
+          userId: deal.assignedToId,
+          type: 'DEAL_STAGE_CHANGED',
+          title: 'New Deal from Converted Lead',
+          message: `Lead ${lead.firstName} ${lead.lastName} converted to Deal "${deal.title}" in stage ${stage.name}.`,
+          metadata: {
+            dealId: deal.id,
+            leadId: lead.id,
+            link: `/deals/${deal.id}`
+          }
+        });
+      } catch (notifErr) {
+        console.error(`[DealService] Notification error:`, notifErr.message);
+      }
     }
 
     return {

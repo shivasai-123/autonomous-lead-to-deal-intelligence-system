@@ -58,6 +58,22 @@ export const crmService = {
   explainAiRecommendation: (recommendationId) => apiClient.post(`/ai/recommendations/${recommendationId}/explanation`),
   generateAiMeetingPrep: (leadId, data) => apiClient.post(`/ai/leads/${leadId}/meeting-preparation`, data),
 
+  // Analytics APIs (Phase 9)
+  getAnalyticsOverview: (params = {}) => apiClient.get('/analytics/overview', { params }),
+  getConversionFunnel: (params = {}) => apiClient.get('/analytics/funnel', { params }),
+  getPipelineDistribution: (params = {}) => apiClient.get('/analytics/pipeline-distribution', { params }),
+  getSalesTrends: (params = {}) => apiClient.get('/analytics/trends', { params }),
+  getStageVelocity: () => apiClient.get('/analytics/stage-velocity'),
+  getLeadSources: (params = {}) => apiClient.get('/analytics/lead-sources', { params }),
+  getSalesRepPerformance: (params = {}) => apiClient.get('/analytics/rep-performance', { params }),
+  getSalesRepWorkspace: () => apiClient.get('/analytics/rep-workspace'),
+
+  // Notification APIs (Phase 9)
+  getNotifications: (params = {}) => apiClient.get('/notifications', { params }),
+  getUnreadCount: () => apiClient.get('/notifications/unread-count'),
+  markNotificationAsRead: (id) => apiClient.patch(`/notifications/${id}/read`),
+  markAllNotificationsAsRead: () => apiClient.post('/notifications/mark-all-read'),
+
   // Assignable users for dropdowns
   getAssignableUsers: () => apiClient.get('/users').catch(() => ({ data: { users: [] } })),
 };

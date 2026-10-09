@@ -20,13 +20,13 @@ Traditional CRMs are static databases requiring endless manual data entry and gu
 
 | Layer | Technologies |
 | :--- | :--- |
-| **Frontend** | React 18, Vite, Tailwind CSS, React Router v6, Axios, Lucide Icons |
-| **Backend** | Node.js, Express.js (Modular REST API), Structured Logging |
+| **Frontend** | React 18, Vite, Tailwind CSS, Recharts, React Router v6, Axios, Socket.IO Client, Lucide Icons |
+| **Backend** | Node.js, Express.js (Modular REST API), Socket.IO (Authenticated WebSockets), Structured Logging |
 | **Authentication** | bcryptjs (Cost 12), JSON Web Tokens (JWT), Role-Based Authorization |
 | **Database** | PostgreSQL 18.6, Prisma ORM 5.22.0 (Relational schema, migrations, seed data) |
 | **AI Services** | OpenAI SDK (`openai` ^7.31.0), `gpt-4o-mini`, Structured JSON completions, Mock provider |
 | **Tooling** | npm Workspaces, dotenv, Concurrently |
-| **Future (Phases 9, 10)** | Socket.IO, Recharts, Docker |
+| **Future (Phase 10)** | Docker, End-to-End Test Automation, Security Hardening |
 
 ---
 
@@ -35,7 +35,7 @@ Traditional CRMs are static databases requiring endless manual data entry and gu
 ```text
 AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │
-├── client/                      # React Frontend (Vite + Tailwind CSS)
+├── client/                      # React Frontend (Vite + Tailwind CSS + Recharts)
 │   ├── public/
 │   │   └── favicon.svg
 │   ├── src/
@@ -43,13 +43,14 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   │   ├── components/
 │   │   │   ├── ai/              # AiAssistantPanel, AiExplanationModal
 │   │   │   ├── common/          # Reusable UI (Button, Card, Badge)
-│   │   │   └── layout/          # Layout UI (Navbar, Sidebar)
+│   │   │   ├── layout/          # Layout UI (Navbar, Sidebar)
+│   │   │   └── notifications/   # NotificationCenter (Bell, badge, real-time dropdown)
 │   │   ├── context/             # AppContext, AuthContext
 │   │   ├── hooks/               # useHealthCheck hook
 │   │   ├── layouts/             # RootLayout
-│   │   ├── pages/               # HomePage, DashboardPage, LoginPage, RegisterPage, UsersPage, LeadsPage, LeadDetailPage, CompaniesPage, PipelinePage, DealsPage, RecommendationsPage, NotFoundPage
+│   │   ├── pages/               # HomePage, DashboardPage (Dual-view Executive/Workspace), LoginPage, RegisterPage, UsersPage, LeadsPage, LeadDetailPage, CompaniesPage, PipelinePage, DealsPage, RecommendationsPage, NotFoundPage
 │   │   ├── routes/              # AppRoutes, ProtectedRoute
-│   │   ├── services/            # Axios API client (api.js), Auth client (auth.js), CRM client (crm.js)
+│   │   ├── services/            # Axios API client (api.js), Auth client (auth.js), CRM client (crm.js), Socket.IO client (socket.js)
 │   │   ├── utils/               # Constants
 │   │   ├── App.jsx              # App root
 │   │   ├── index.css            # Tailwind directives
@@ -59,21 +60,21 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   ├── tailwind.config.js
 │   └── vite.config.js
 │
-├── server/                      # Express Backend REST API
+├── server/                      # Express Backend REST API & Real-Time WebSocket Server
 │   ├── prisma/
 │   │   ├── migrations/          # Versioned PostgreSQL SQL migrations
 │   │   ├── schema.prisma        # Prisma relational models & datasource config
 │   │   └── seed.js              # Database seed script (roles, stages, dev accounts)
 │   ├── src/
 │   │   ├── config/              # Environment config, Prisma client, scoring, recommendation & AI configs
-│   │   ├── controllers/         # Health, Auth, User, Company, Lead, Activity, Pipeline, Deal, Recommendation, AI controllers
+│   │   ├── controllers/         # Health, Auth, User, Company, Lead, Activity, Pipeline, Deal, Recommendation, AI, Analytics, Notification controllers
 │   │   ├── middlewares/         # Central error handler, notFoundHandler, requireAuth, requireRole
-│   │   ├── routes/              # index.js, health, auth, user, company, lead, pipeline, deal, recommendation, ai routes
-│   │   ├── services/            # Health, Auth, User, Company, Lead, Activity, Duplicate, Pipeline, Deal, Scoring, Recommendation, AI, Audit services
+│   │   ├── routes/              # index.js, health, auth, user, company, lead, pipeline, deal, recommendation, ai, analytics, notification routes
+│   │   ├── services/            # Health, Auth, User, Company, Lead, Activity, Duplicate, Pipeline, Deal, Scoring, Recommendation, AI, Analytics, Notification, Socket, Audit services
 │   │   ├── utils/               # Structured logger, standardized API responses, password & token helpers
 │   │   ├── validators/          # auth, user, company, lead, activity, pipeline, deal, recommendation, ai validators
 │   │   ├── app.js               # Express app instance & middleware stack
-│   │   └── server.js            # HTTP server launch & graceful shutdown
+│   │   └── server.js            # HTTP server launch, Socket.IO initialization & graceful shutdown
 │   ├── verify-health.js         # Automated health diagnostic check
 │   ├── verify-db.js             # Automated database relational verification
 │   ├── verify-auth.js           # Automated authentication & RBAC verification
@@ -82,6 +83,7 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   ├── verify-intelligence.js   # Automated lead intelligence & scoring verification
 │   ├── verify-recommendation.js # Automated Next-Best-Action recommendation verification
 │   ├── verify-ai.js             # Automated AI features, summaries & sales assistance verification
+│   ├── verify-analytics.js      # Automated Executive Dashboard, Analytics & Notification verification
 │   ├── .env.example
 │   └── package.json
 │
@@ -90,7 +92,7 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   ├── ARCHITECTURE.md          # System & application architecture
 │   ├── DATABASE_DESIGN.md       # Relational models, fields, delete rules & indexes
 │   ├── API_DESIGN.md            # REST API conventions & endpoints
-│   └── ROADMAP.md               # 10-Phase roadmap (Phases 1-8 completed)
+│   └── ROADMAP.md               # 10-Phase roadmap (Phases 1-9 completed)
 │
 ├── .gitignore                   # Git ignore rules
 ├── .env.example                 # Root environment template
@@ -186,7 +188,10 @@ npm run test:recommendation
 # 8. Verify all 73 AI features, lead summaries, follow-up drafts & meeting prep tests
 npm run test:ai
 
-# 9. Verify client production build
+# 9. Verify all 54 Executive Dashboard, Analytics, Notifications & Socket.IO tests
+npm run test:analytics
+
+# 10. Verify client production build
 npm run build:client
 ```
 
@@ -199,6 +204,7 @@ npm run build:client
 
 ## 🗺️ Roadmap & Current Status
 
-This repository is currently at **PHASE 8: AI Features, Lead Summaries & Intelligent Sales Assistance (COMPLETED)**.
+This repository is currently at **PHASE 9: Executive Dashboard, Analytics, Notifications & UI Polish (COMPLETED)**.
 
 For detailed scope breakdowns of all 10 planned phases, refer to [`docs/ROADMAP.md`](./docs/ROADMAP.md).
+

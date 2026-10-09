@@ -16,6 +16,7 @@
     "test:intelligence": "node verify-intelligence.js",
     "test:recommendation": "node verify-recommendation.js",
     "test:ai": "node verify-ai.js",
+    "test:analytics": "node verify-analytics.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed"
@@ -30,10 +31,12 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.3",
-    "openai": "^7.31.0"
+    "openai": "^7.31.0",
+    "socket.io": "^4.8.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.4",
-    "prisma": "^5.19.1"
+    "prisma": "^5.19.1",
+    "socket.io-client": "^4.8.4"
   }
 }

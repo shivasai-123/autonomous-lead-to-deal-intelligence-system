@@ -8,6 +8,7 @@ import {
   scoreToPriority
 } from '../config/scoring.config.js';
 import { AuditService } from './audit.service.js';
+import { NotificationService } from './notification.service.js';
 
 export class ScoringService {
   /**
@@ -267,6 +268,26 @@ export class ScoringService {
             causalActivityId
           }
         });
+
+        // Trigger notification if lead transitioned to HOT (>= 70)
+        if (oldScore < 70 && newScore >= 70 && updatedLead.assignedToId) {
+          try {
+            await NotificationService.createNotification({
+              userId: updatedLead.assignedToId,
+              type: 'SCORE_THRESHOLD_REACHED',
+              title: 'Hot Lead Alert',
+              message: `Lead ${updatedLead.firstName} ${updatedLead.lastName} reached score ${newScore} (${calculation.classification}). Priority updated to ${newPriority}.`,
+              metadata: {
+                leadId: updatedLead.id,
+                score: newScore,
+                priority: newPriority,
+                link: `/leads/${updatedLead.id}`
+              }
+            });
+          } catch (notifErr) {
+            console.error(`[ScoringService] Score threshold notification error:`, notifErr.message);
+          }
+        }
       }
     }
 

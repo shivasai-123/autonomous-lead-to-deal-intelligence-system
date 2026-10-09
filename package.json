@@ -21,6 +21,7 @@
     "test:intelligence": "npm run test:intelligence --workspace=server",
     "test:recommendation": "npm run test:recommendation --workspace=server",
     "test:ai": "npm run test:ai --workspace=server",
+    "test:analytics": "npm run test:analytics --workspace=server",
     "lint": "npm run lint --workspaces --if-present"
   },
   "devDependencies": {

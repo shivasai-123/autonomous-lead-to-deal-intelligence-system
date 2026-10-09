@@ -15,8 +15,8 @@ This roadmap outlines the complete 10-phase engineering lifecycle for the Autono
 | **PHASE 5** | Sales Pipeline & Deal Management | ✅ **COMPLETED** |
 | **PHASE 6** | Lead Intelligence — Scoring, Priority & Automation | ✅ **COMPLETED** |
 | **PHASE 7** | Next-Best-Action Recommendation Engine | ✅ **COMPLETED** |
-| **PHASE 8** | AI Features & Explanations | ⏳ **NOT IMPLEMENTED YET** |
-| **PHASE 9** | Dashboard, Analytics, Notifications & UI Polish | ⏳ **NOT IMPLEMENTED YET** |
+| **PHASE 8** | AI Features & Explanations | ✅ **COMPLETED** |
+| **PHASE 9** | Dashboard, Analytics, Notifications & UI Polish | ✅ **COMPLETED** |
 | **PHASE 10** | Testing, Security, Deployment & Documentation | ⏳ **NOT IMPLEMENTED YET** |
 
 ---
@@ -220,12 +220,34 @@ This roadmap outlines the complete 10-phase engineering lifecycle for the Autono
 ---
 
 ### PHASE 9: Dashboard, Analytics, Notifications & UI Polish
-- **Status**: ⏳ **NOT IMPLEMENTED YET**
-- **Planned Scope**:
-  - Executive sales dashboard with Recharts visualizations (conversion funnel, revenue trends).
-  - Individual rep performance dashboards and daily task checklists.
-  - Real-time event notifications (Socket.IO integration).
-  - Responsive design polish and keyboard accessibility.
+- **Status**: ✅ **COMPLETED**
+- **Deliverables**:
+  - **Executive Analytics Engine & Backend Endpoints (`/api/analytics`)**:
+    - `GET /api/analytics/overview`: Real-time KPI calculations with date horizon filters (`7d`, `30d`, `90d`, `month`, `all`, custom). Returns active leads, stalled count, open deals, unweighted pipeline, probability-weighted pipeline, closed-won revenue, win rate (`won / (won + lost) * 100`), and average sales cycle days.
+    - `GET /api/analytics/conversion-funnel`: 5-stage commercial progression (All Leads -> Contacted -> Qualified -> Deals Created -> Deals Won) with percentage drop-off rates.
+    - `GET /api/analytics/pipeline-distribution`: Active deals and volume grouped across pipeline stages.
+    - `GET /api/analytics/sales-trends`: 6-month historical revenue and deal closing velocity.
+    - `GET /api/analytics/stage-velocity`: Average duration in days spent in each pipeline stage based on PostgreSQL `DealStageHistory`.
+    - `GET /api/analytics/lead-sources`: Lead origin breakdown with volumes and conversion ratios.
+    - `GET /api/analytics/rep-performance`: Commercial leaderboard for Admins & Sales Managers (403 Forbidden for Sales Representatives).
+    - `GET /api/analytics/rep-workspace`: Individual salesperson workspace aggregating assigned hot leads (&ge; 70 pts), stalled opportunities (&gt; 14d inactive), closing-soon deals (next 14d), and pending Next-Best-Actions.
+  - **Notification Architecture & Real-Time WebSocket Infrastructure**:
+    - PostgreSQL migration adding `metadata Json?` to `Notification` model for deep link and entity association.
+    - `SocketService` (`socket.io` ^4.8.4) with authenticated JWT connection handshake and strict user room isolation (`user:${userId}`). Zero global broadcast leaks.
+    - `NotificationService`: Auto-creates notifications on key business events (`LEAD_ASSIGNED`, `SCORE_THRESHOLD_REACHED`, `RECOMMENDATION_GENERATED`, `DEAL_STAGE_CHANGED`, `SYSTEM_ALERT`) with 60-second duplicate suppression and real-time socket emit.
+    - Notification REST endpoints (`/api/notifications`): listing, unread count, single mark-as-read, and bulk mark-all-read.
+  - **Frontend Notification Center & Dual-View Dashboard**:
+    - `NotificationCenter.jsx`: Interactive bell in `Navbar.jsx` with animated unread badge, relative timestamp display, event-specific category icons, read/unread state toggles, and direct deep links. Includes real-time socket updates and 45-second polling fallback.
+    - Dual-view `DashboardPage.jsx`:
+      - **Executive Overview**: 8 primary metric cards with date horizon pill bar, Recharts historical revenue AreaChart, Pipeline Stage Distribution BarChart, 5-stage Conversion Funnel, and Acquisition Channel Donut Chart, plus Sales Rep leaderboard for management roles.
+      - **My Workspace**: Personalized workspace for sales reps featuring personal KPI cards, Hot Leads action table, Stalled Leads follow-up alerts, Deals Closing Soon list, and Pending Next-Best-Actions trigger panel.
+  - **UI Polish Across Existing Views**:
+    - `Navbar.jsx`: Phase 9 badge and integrated Notification Center.
+    - `LeadsPage.jsx` & `RecommendationsPage.jsx`: URL search param hydration for deep linking from dashboard alerts (e.g. `?classification=HOT`, `?isStalled=true`, `?status=ALL`).
+  - **Automated Verification Suite (`server/verify-analytics.js`)**:
+    - 54 automated assertions passing with 0 failures covering all analytics endpoints, invariants, RBAC restrictions, notification lifecycle, deduplication, and Socket.IO room isolation.
+    - 0 regressions across Phases 1–8 test suites.
+    - Clean client production build (`npm run build:client`).
 
 ---
 

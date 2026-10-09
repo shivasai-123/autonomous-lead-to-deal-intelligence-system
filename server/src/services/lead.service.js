@@ -3,6 +3,7 @@ import { DuplicateService } from './duplicate.service.js';
 import { AuditService } from './audit.service.js';
 import { classifyScore, STALLED_THRESHOLD_DAYS } from '../config/scoring.config.js';
 import { RecommendationService } from './recommendation.service.js';
+import { NotificationService } from './notification.service.js';
 
 export class LeadService {
   /**
@@ -365,6 +366,39 @@ export class LeadService {
       }
     });
 
+    // Generate notifications
+    try {
+      if (lead.assignedToId) {
+        await NotificationService.createNotification({
+          userId: lead.assignedToId,
+          type: 'LEAD_ASSIGNED',
+          title: 'New Lead Assigned',
+          message: `You have been assigned lead ${lead.firstName} ${lead.lastName}.`,
+          metadata: {
+            leadId: lead.id,
+            email: lead.email,
+            link: `/leads/${lead.id}`
+          }
+        });
+      }
+
+      if (lead.isSuspicious) {
+        await NotificationService.createNotification({
+          userId: user.id,
+          type: 'SYSTEM_ALERT',
+          title: 'Suspicious Lead Alert',
+          message: `Lead ${lead.firstName} ${lead.lastName} flagged: ${lead.suspiciousReason || 'Potential spam or invalid data.'}`,
+          metadata: {
+            leadId: lead.id,
+            reason: lead.suspiciousReason,
+            link: `/leads/${lead.id}`
+          }
+        });
+      }
+    } catch (notifErr) {
+      console.error(`[LeadService] Notification generation error:`, notifErr.message);
+    }
+
     // Safely generate initial Next-Best-Action recommendation for newly created lead
     try {
       await RecommendationService.generateOrUpdateRecommendation(lead.id, user);
@@ -472,6 +506,24 @@ export class LeadService {
           newAssigneeId: data.assignedToId
         }
       });
+
+      if (data.assignedToId) {
+        try {
+          await NotificationService.createNotification({
+            userId: data.assignedToId,
+            type: 'LEAD_ASSIGNED',
+            title: 'Lead Assigned to You',
+            message: `You have been assigned lead ${updated.firstName} ${updated.lastName}.`,
+            metadata: {
+              leadId: updated.id,
+              email: updated.email,
+              link: `/leads/${updated.id}`
+            }
+          });
+        } catch (notifErr) {
+          console.error(`[LeadService] Reassignment notification error:`, notifErr.message);
+        }
+      }
     }
 
     // General update audit

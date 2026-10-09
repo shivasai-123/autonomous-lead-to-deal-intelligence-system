@@ -1,9 +1,16 @@
+import http from 'http';
 import app from './app.js';
 import { env } from './config/environment.js';
 import { logger } from './utils/logger.js';
 import { disconnectPrisma } from './config/prisma.js';
+import { SocketService } from './services/socket.service.js';
 
-const server = app.listen(env.PORT, () => {
+const server = http.createServer(app);
+
+// Initialize real-time Socket.IO communication
+SocketService.init(server);
+
+server.listen(env.PORT, () => {
   logger.info(`CRM Backend server running on port ${env.PORT} [${env.NODE_ENV}]`);
   logger.info(`Health check available at http://localhost:${env.PORT}/api/health`);
 });
@@ -11,6 +18,7 @@ const server = app.listen(env.PORT, () => {
 // Handle graceful shutdown
 const shutdown = async (signal) => {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
+  SocketService.close();
   server.close(async () => {
     logger.info('HTTP server closed');
     await disconnectPrisma();

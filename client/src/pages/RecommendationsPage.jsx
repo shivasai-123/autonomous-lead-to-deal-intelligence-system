@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Sparkles,
   Clock,
@@ -89,9 +89,11 @@ export function RecommendationsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [batchLoading, setBatchLoading] = useState(false);
 
+  const [searchParams] = useSearchParams();
+
   // Filters
-  const [statusFilter, setStatusFilter] = useState('PENDING');
-  const [typeFilter, setTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'PENDING');
+  const [typeFilter, setTypeFilter] = useState(searchParams.get('type') || '');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });

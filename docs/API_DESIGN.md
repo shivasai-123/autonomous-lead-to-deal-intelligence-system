@@ -502,7 +502,78 @@ Every failure response contains `success: false`, a high-level `message`, and an
 
 ---
 
-## 10. Future Endpoint Blueprint (Phase 9+)
+## 10. Executive Analytics & Workspace APIs (Phase 9)
+
+### 10.1 Overview Analytics
+- `GET /api/analytics/overview`
+  - **Auth**: `Bearer <token>` (Admins/Managers view org-wide; Reps view assigned/unassigned)
+  - **Query Params**: `range` (`7d`, `30d`, `90d`, `month`, `all`, custom)
+  - **Response (`200 OK`)**:
+    ```json
+    {
+      "success": true,
+      "message": "Analytics overview retrieved successfully",
+      "data": {
+        "dateRange": "Last 30 Days",
+        "leads": {
+          "activeLeads": 42,
+          "newLeadsInPeriod": 14,
+          "hotLeads": 8,
+          "warmLeads": 16,
+          "coldLeads": 18,
+          "stalledLeads": 5,
+          "leadConversionRate": 19.0
+        },
+        "deals": {
+          "openDeals": 12,
+          "openPipelineValue": 240000,
+          "weightedPipelineValue": 148500,
+          "wonDeals": 4,
+          "wonDealValue": 95000,
+          "lostDeals": 2,
+          "winRate": 66.7,
+          "avgDealValue": 20000,
+          "avgSalesCycleDays": 14.5
+        }
+      }
+    }
+    ```
+
+### 10.2 Funnel, Distribution, Velocity & Trends
+- `GET /api/analytics/funnel` (or `/conversion-funnel`): 5-step conversion stages with count and percentage conversion.
+- `GET /api/analytics/pipeline-distribution`: Active open deals and volume grouped across ordered stages.
+- `GET /api/analytics/trends` (or `/sales-trends`): 6-month historical monthly revenue and deal velocity.
+- `GET /api/analytics/stage-velocity`: Average days spent in each pipeline stage.
+- `GET /api/analytics/lead-sources`: Lead origin volumes and conversion percentages.
+
+### 10.3 Rep Performance Leaderboard & Personal Workspace
+- `GET /api/analytics/rep-performance` (or `/sales-performance`)
+  - **Auth**: `Bearer <token>` (Roles: `ADMIN`, `SALES_MANAGER` only; `SALES_REPRESENTATIVE` receives `403 Forbidden`).
+  - **Response (`200 OK`)**: `{ success: true, data: { performance: [{ repId, name, email, assignedLeads, wonDeals, wonRevenue, winRate }] } }`.
+- `GET /api/analytics/rep-workspace`
+  - **Auth**: `Bearer <token>` (Personalized to authenticated rep).
+  - **Response (`200 OK`)**: `{ success: true, data: { metrics, hotLeads, stalledLeads, dealsClosingSoon, recommendations } }`.
+
+---
+
+## 11. Notification APIs & WebSocket Streaming (Phase 9)
+
+### 11.1 Notification REST Endpoints
+- `GET /api/notifications`: Paginated list of notifications for authenticated user (`user:${userId}`).
+- `GET /api/notifications/unread-count`: Returns `{ count }` of unread notifications.
+- `PATCH /api/notifications/:id/read`: Marks single notification as read (`isRead: true`, `readAt: now()`).
+- `POST /api/notifications/mark-all-read` (also `PATCH` and `/read-all`): Marks all unread alerts as read for current user.
+
+### 11.2 Real-Time WebSocket Streaming (Socket.IO)
+- **Handshake**: Authenticated with JWT token in `auth.token`.
+- **Channel Isolation**: Sockets automatically join private room `user:${userId}`. No global broadcast leaks.
+- **Events**:
+  - `notification:new`: Emits newly persisted notifications in real-time.
+  - `notification:unread_count`: Emits updated unread counter upon status transitions.
+
+---
+
+## 12. Future Endpoint Blueprint (Phase 10)
 
 | Module | Method & Endpoint | Description | Phase | Status |
 | :--- | :--- | :--- | :--- | :--- |
@@ -510,6 +581,7 @@ Every failure response contains `success: false`, a high-level `message`, and an
 | **Intelligence** | `GET /api/leads/:id/intelligence`, `POST /api/leads/recalculate-scores` | Explainable scoring, temperature & stalled detection | Phase 6 | **COMPLETED** |
 | **NBA Engine** | `GET /api/recommendations`, `PATCH /api/recommendations/:id/status` | Next-best-action recommendation engine | Phase 7 | **COMPLETED** |
 | **AI Assistant** | `POST /api/ai/leads/:id/summary`, `POST /api/ai/leads/:id/follow-up-draft` | Grounded AI summaries, email drafts & meeting prep | Phase 8 | **COMPLETED** |
-| **Analytics** | `GET /api/analytics/funnel` | Retrieve pipeline conversion metrics | Phase 9 | Planned |
-| **Notifications**| `GET /api/notifications` | Fetch user alert notifications | Phase 9 | Planned |
+| **Analytics** | `GET /api/analytics/overview`, `GET /api/analytics/funnel` | Executive analytics, funnel, trends & workspace | Phase 9 | **COMPLETED** |
+| **Notifications**| `GET /api/notifications`, `WebSocket private rooms` | Real-time notification center & WebSocket streaming | Phase 9 | **COMPLETED** |
+| **Deployment** | Health checks, Docker, Rate limiting, Hardening | Production deployment & security audits | Phase 10 | Planned |
 

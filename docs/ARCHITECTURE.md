@@ -238,14 +238,45 @@ Deterministic, rule-based recommendation matrix prioritizing high-impact sales w
 
 ---
 
-## 9. Technology Rationale
+## 9. Executive Analytics, Real-Time Notifications & UI Architecture (Phase 9)
+
+### 9.1 Analytics Engine Architecture
+- **Multi-Horizon Calculations**: Supports dynamic date windows (`7d`, `30d`, `90d`, `month`, `all`, custom).
+- **Mathematical Invariant Rigor**:
+  - `winRate`: Strictly defined as `(wonDeals / (wonDeals + lostDeals)) * 100`. Completely excludes open pipeline deals to avoid artificial dilution. Returns `0%` when denominator is 0.
+  - `weightedPipelineValue`: Multiplies active deal contract values by their stage conversion probability percentage (`stage.probability / 100`). Only open opportunities are evaluated.
+  - `avgSalesCycleDays`: Computes precise calendar day durations between deal creation (`createdAt`) and successful closure (`closedAt`).
+- **5-Stage Conversion Funnel**: Measures attrition across `All Leads` -> `Contacted` -> `Qualified` -> `Deals Created` -> `Deals Won`.
+- **Role Scoping**:
+  - `ADMIN` & `SALES_MANAGER`: Organization-wide executive analytics and rep performance leaderboard.
+  - `SALES_REPRESENTATIVE`: Strictly scoped to assigned or unassigned records; rep performance leaderboard is forbidden (`403 Forbidden`).
+
+### 9.2 Real-Time WebSocket Infrastructure (`Socket.IO`)
+- **Connection Handshake**: Authenticated via JWT bearer tokens passed in the socket connection handshake (`auth: { token }`).
+- **Private Room Isolation**: Upon verification, each client socket joins room `user:${userId}` exclusively.
+- **Zero Broadcast Leak**: System notifications are never broadcast across open channels; messages are emitted strictly to private user rooms via `SocketService.emitToUser(userId, event, payload)`.
+- **Deduplication Safeguard**: Automatically suppresses duplicate alert generation within a 60-second window.
+- **Resilience**: Client features auto-reconnect backoff alongside a 45-second polling fallback interval.
+
+### 9.3 Notification Center & Frontend Polish
+- **Notification Center (`NotificationCenter.jsx`)**: Responsive Navbar bell with real-time animated unread badges, event-specific category icons, relative timestamps ("5m ago", "Yesterday"), mark-as-read, and deep links to related entities.
+- **Dual-View Dashboard (`DashboardPage.jsx`)**:
+  - Executive Overview: 8 primary KPI cards with time horizon filtering, Recharts 6-month historical revenue AreaChart, Stage Distribution BarChart, 5-stage Conversion Funnel, Acquisition Channel Donut Chart, and Rep Leaderboard.
+  - My Workspace: Personal salesperson dashboard with assigned Hot Leads table, Stalled Leads alert panel, Deals Closing Soon, and Pending Next-Best-Actions execution drawer.
+- **Deep-Link Query Hydration**: URL search parameter hydration across `LeadsPage.jsx` and `RecommendationsPage.jsx` for seamless click-through from dashboard metrics (e.g. `?classification=HOT`, `?isStalled=true`).
+
+---
+
+## 10. Technology Rationale
 
 | Technology | Selection Rationale |
 | :--- | :--- |
 | **React + Vite** | High performance, rapid developer feedback loop, modern component ecosystem. |
 | **Tailwind CSS** | Utility-first styling enabling consistent SaaS design systems without bloated custom CSS files. |
-| **Node.js / Express** | Lightweight, event-driven runtime ideal for RESTful I/O, easy integration with Prisma and future Socket.IO streams. |
+| **Node.js / Express** | Lightweight, event-driven runtime ideal for RESTful I/O, easy integration with Prisma and Socket.IO. |
 | **PostgreSQL + Prisma** | Strict relational integrity, foreign key cascades, migration history, type-safe database queries. |
 | **bcryptjs + JWT** | Industry-standard password hashing and stateless authorization tokens with cross-platform stability. |
 | **OpenAI SDK (`openai`)** | Isolated backend client with structured JSON parsing, prompt defenses, and injectable mock testing interface. |
+| **Socket.IO (`socket.io`)** | Low-latency bi-directional WebSocket streaming with private room multiplexing and HTTP polling fallback. |
+| **Recharts (`recharts`)** | Declarative, responsive React charting library with clean svg rendering and custom tooltips. |
 

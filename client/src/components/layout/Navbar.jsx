@@ -5,6 +5,7 @@ import { useHealthCheck } from '../../hooks/useHealthCheck';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
+import { NotificationCenter } from '../notifications/NotificationCenter';
 
 export function Navbar() {
   const { loading: healthLoading, error: healthError } = useHealthCheck();
@@ -47,7 +48,7 @@ export function Navbar() {
               </div>
             </Link>
             <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold bg-brand-50 text-brand-700 border border-brand-200 rounded">
-              Phase 5
+              Phase 9
             </span>
           </div>
 
@@ -86,6 +87,9 @@ export function Navbar() {
                 <span className="text-xs text-emerald-700">API Connected</span>
               </Badge>
             )}
+
+            {/* Notification Center */}
+            {isAuthenticated && <NotificationCenter />}
 
             {/* Auth Controls */}
             {isAuthenticated ? (
