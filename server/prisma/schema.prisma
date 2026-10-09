@@ -154,6 +154,12 @@ model Lead {
   status    LeadStatus   @default(NEW)
   priority  LeadPriority @default(MEDIUM)
   score     Int          @default(0)
+  // Qualification and flags
+  isArchived      Boolean      @default(false)
+  isDuplicate     Boolean      @default(false)
+  isSuspicious    Boolean      @default(false)
+  suspiciousReason String?
+
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -176,6 +182,7 @@ model Lead {
   @@index([assignedToId])
   @@index([status])
   @@index([score])
+  @@index([isArchived])
   @@index([createdAt])
   @@map("leads")
 }

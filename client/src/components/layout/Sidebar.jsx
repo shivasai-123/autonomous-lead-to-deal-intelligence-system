@@ -24,8 +24,8 @@ export function Sidebar() {
     ...(isManagement
       ? [{ label: 'User Directory', to: '/users', icon: ShieldCheck, enabled: true, highlight: true }]
       : []),
-    { label: 'Leads Management', to: '/leads', icon: Users, enabled: false, phase: 'Phase 4' },
-    { label: 'Companies', to: '/companies', icon: Building2, enabled: false, phase: 'Phase 4' },
+    { label: 'Leads Management', to: '/leads', icon: Users, enabled: true },
+    { label: 'Companies', to: '/companies', icon: Building2, enabled: true },
     { label: 'Sales Pipeline', to: '/pipeline', icon: GitBranch, enabled: false, phase: 'Phase 5' },
     { label: 'Deals & Revenue', to: '/deals', icon: Briefcase, enabled: false, phase: 'Phase 5' },
     { label: 'Next-Best-Action', to: '/recommendations', icon: Sparkles, enabled: false, phase: 'Phase 7' },

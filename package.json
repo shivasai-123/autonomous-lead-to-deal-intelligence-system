@@ -16,6 +16,7 @@
     "test:health": "npm run test:health --workspace=server",
     "test:db": "npm run test:db --workspace=server",
     "test:auth": "npm run test:auth --workspace=server",
+    "test:crm": "npm run test:crm --workspace=server",
     "lint": "npm run lint --workspaces --if-present"
   },
   "devDependencies": {

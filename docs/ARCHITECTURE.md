@@ -55,9 +55,9 @@ client/src/
 ├── context/          # React Context providers (AppContext, AuthContext)
 ├── hooks/            # Custom React hooks (useHealthCheck)
 ├── layouts/          # Page layout shells (RootLayout)
-├── pages/            # Routable pages (HomePage, DashboardPage, LoginPage, RegisterPage, UsersPage, NotFoundPage)
+├── pages/            # Routable pages (HomePage, DashboardPage, LoginPage, RegisterPage, UsersPage, LeadsPage, LeadDetailPage, CompaniesPage, NotFoundPage)
 ├── routes/           # Routing table (AppRoutes.jsx, ProtectedRoute.jsx)
-├── services/         # API HTTP communication client (api.js, auth.js)
+├── services/         # API HTTP communication clients (api.js, auth.js, crm.js)
 ├── utils/            # Shared constants, helpers
 ├── App.jsx           # App composition root with AuthProvider
 ├── main.jsx          # DOM entry point
@@ -71,13 +71,13 @@ client/src/
 ### Layered Separation of Concerns
 1. **Routes Layer (`routes/`)**: Defines URL patterns and maps HTTP verbs to controller methods. Protected routes are secured by `requireAuth` and `requireRole`.
 2. **Controllers Layer (`controllers/`)**: Extracts request parameters, headers, and body; invokes relevant services; and formats responses using standardized response helpers (`sendSuccess`, `sendError`).
-3. **Services Layer (`services/`)**: Contains pure business logic (`AuthService`, `UserService`). Encapsulates password hashing, token issuance, user serialization, and database queries.
+3. **Services Layer (`services/`)**: Contains pure business logic (`AuthService`, `UserService`, `CompanyService`, `LeadService`, `ActivityService`, `DuplicateService`, `AuditService`). Encapsulates password hashing, token issuance, duplicate matching, audit tracking, and Prisma database operations.
 4. **Middlewares Layer (`middlewares/`)**: Centralizes cross-cutting concerns:
    - `requireAuth`: Verifies Bearer JWT tokens and attaches authenticated user profiles to `req.user`.
    - `requireRole(...roles)`: Enforces role-based permissions (`ADMIN`, `SALES_MANAGER`, `SALES_REPRESENTATIVE`).
    - `errorHandler`: Global exception handler sanitizing error responses.
    - `notFoundHandler`: Catches unmapped routes.
-5. **Validators Layer (`validators/`)**: Input sanitization and payload validation schemas (`auth.validator.js`, `user.validator.js`).
+5. **Validators Layer (`validators/`)**: Input sanitization and payload validation schemas (`auth.validator.js`, `user.validator.js`, `company.validator.js`, `lead.validator.js`, `activity.validator.js`).
 6. **Data Access Layer (`config/prisma.js` & `prisma/`)**: Manages database queries via Prisma ORM connected to PostgreSQL.
 
 ### Directory Structure
@@ -89,18 +89,19 @@ server/
 │   └── seed.js              # Seed script (roles, stages, dev accounts)
 ├── src/
 │   ├── config/              # Environment config & Prisma client instance
-│   ├── controllers/         # HealthController, AuthController, UserController
+│   ├── controllers/         # Health, Auth, User, Company, Lead, Activity controllers
 │   ├── middlewares/         # Central error handler, notFoundHandler, requireAuth, requireRole
 │   ├── modules/             # Reserved for future domain modules
-│   ├── routes/              # index.js, health.routes.js, auth.routes.js, user.routes.js
-│   ├── services/            # HealthService, AuthService, UserService
+│   ├── routes/              # index.js, health, auth, user, company, lead routes
+│   ├── services/            # Auth, User, Company, Lead, Activity, Duplicate, Audit services
 │   ├── utils/               # Structured logger, standardized API responses, password & token helpers
-│   ├── validators/          # auth.validator.js, user.validator.js
+│   ├── validators/          # auth, user, company, lead, activity validators
 │   ├── app.js               # Express app bootstrapping and middleware pipeline
 │   └── server.js            # HTTP server launch, signal trapping & graceful shutdown
 ├── verify-health.js         # Backend health diagnostic test
 ├── verify-db.js             # Database model and relational join test
 ├── verify-auth.js           # 10-test authentication and RBAC suite
+├── verify-crm.js            # 18-test CRM Core and Intelligence verification suite
 ├── .env.example             # Documented environment template
 └── package.json
 ```
@@ -128,9 +129,9 @@ server/
 
 ### 4.3 Role-Based Access Control (RBAC)
 - Roles are verified at both the route middleware level (`requireRole`) and database level:
-  - **ADMIN**: Unrestricted access to user directory, status toggling, and role modification.
-  - **SALES_MANAGER**: Directory visibility, pipeline oversight.
-  - **SALES_REPRESENTATIVE**: Access restricted to assigned CRM entities. Public self-registration strictly defaults to `SALES_REPRESENTATIVE`.
+  - **ADMIN**: Unrestricted access to user directory, status toggling, and role modification. Full read/write access to all companies, leads, and audit entries.
+  - **SALES_MANAGER**: Lead and company management oversight; assign leads to sales representatives; archive leads.
+  - **SALES_REPRESENTATIVE**: Access scoped to assigned or unassigned leads. Can create leads (auto-assigned to self) and log activities. Cannot access or update another rep's assigned lead. Public registration strictly defaults to `SALES_REPRESENTATIVE`.
 
 ### 4.4 Client Session & Token Storage
 - Bearer tokens are stored in `localStorage` under `autolead_jwt_token`.
@@ -139,7 +140,31 @@ server/
 
 ---
 
-## 5. Technology Rationale
+## 5. CRM Core & Intelligence Architecture (Phase 4)
+
+### 5.1 Deduplication & Corporate Domain Correlation
+The `DuplicateService` implements a three-tier contact analysis engine:
+1. **Normalized Email Matching**: Emails are trimmed and transformed to lowercase. Matches trigger a `409 Conflict` duplicate warning with matching record details.
+2. **Normalized Phone Matching**: Phone numbers are converted to canonical digits preserving country code prefix. Formats like `+1 (555) 234-5678` and `15552345678` are accurately identified as matching.
+3. **Corporate Domain Matching**: Non-public webmail domains (e.g. `@acme.com`) are extracted. Matching existing leads by corporate domain surfaces an informational organizational relationship warning, rather than an automatic duplicate flag, enabling multiple employees from the same firm to be tracked without false positives.
+
+### 5.2 Explainable Suspicious Contact Detection
+Automated rules flag anomalies for human review without black-box ML:
+- Disposable/temporary email domains (e.g., Mailinator, TempMail).
+- Obvious test email patterns (`test@test.com`, `fake@fake.com`).
+- Malformed phone numbers (< 7 digits or repeating digits like `0000000`).
+- Test name patterns.
+When flagged, `isSuspicious: true` and `suspiciousReason` are persisted in PostgreSQL.
+
+### 5.3 Soft-Delete Archival Pattern
+To preserve relational auditability, financial deal links, and activity histories, lead deletion executes soft-delete archival:
+- Sets `isArchived: true`.
+- Excluded from standard operational listings by default.
+- Cascades are prevented, preserving related activities, deals, and scores.
+
+---
+
+## 6. Technology Rationale
 
 | Technology | Selection Rationale |
 | :--- | :--- |

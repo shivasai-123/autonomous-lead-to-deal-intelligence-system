@@ -11,6 +11,7 @@
     "test:health": "node verify-health.js",
     "test:db": "node verify-db.js",
     "test:auth": "node verify-auth.js",
+    "test:crm": "node verify-crm.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed"

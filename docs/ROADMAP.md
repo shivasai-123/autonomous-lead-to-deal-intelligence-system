@@ -11,7 +11,7 @@ This roadmap outlines the complete 10-phase engineering lifecycle for the Autono
 | **PHASE 1** | Planning, Architecture & Foundation | ✅ **COMPLETED** |
 | **PHASE 2** | Database Design & Prisma Setup | ✅ **COMPLETED** |
 | **PHASE 3** | Authentication & User Management | ✅ **COMPLETED** |
-| **PHASE 4** | CRM Core — Leads, Companies & Activities | ⏳ **NOT IMPLEMENTED YET** |
+| **PHASE 4** | CRM Core — Leads, Companies & Activities | ✅ **COMPLETED** |
 | **PHASE 5** | Sales Pipeline & Deal Management | ⏳ **NOT IMPLEMENTED YET** |
 | **PHASE 6** | Lead Intelligence — Scoring, Priority & Automation | ⏳ **NOT IMPLEMENTED YET** |
 | **PHASE 7** | Next-Best-Action Recommendation Engine | ⏳ **NOT IMPLEMENTED YET** |
@@ -69,14 +69,24 @@ This roadmap outlines the complete 10-phase engineering lifecycle for the Autono
 ---
 
 ### PHASE 4: CRM Core — Leads, Companies & Activities
-- **Status**: ⏳ **NOT IMPLEMENTED YET**
-- **Planned Scope**:
-  - Lead capture, update, archive, and deletion (CRUD).
-  - Company firmographic record management.
-  - Lead activity tracking (emails, phone calls, demo bookings, site visits).
-  - Duplicate lead detection and suspicious lead flags (disposable email domains, bot patterns).
-  - Rep assignment and lead transfer workflows.
-  - Interactive lead list and lead detail frontend views.
+- **Status**: ✅ **COMPLETED**
+- **Deliverables**:
+  - Non-destructive Prisma migration (`20261009043001_add_lead_archival_and_flags`) adding `isArchived`, `isDuplicate`, `isSuspicious`, and `suspiciousReason` to `Lead` model.
+  - Implemented Company management backend (`GET /api/companies`, `POST /api/companies`, `GET /api/companies/:id`, `PATCH /api/companies/:id`) with case-insensitive duplicate prevention, search, and audit logging.
+  - Implemented Lead management backend (`GET /api/leads`, `POST /api/leads`, `GET /api/leads/:id`, `PATCH /api/leads/:id`, `DELETE /api/leads/:id`) with search, multi-field filtering, pagination, and RBAC scoping.
+  - Implemented `DuplicateService` for normalized email (`trim().toLowerCase()`) and normalized phone canonical digit comparison (preserving country code).
+  - Implemented corporate domain matching (distinguishing relationship warnings from duplicate signals).
+  - Implemented explainable suspicious-lead detection (disposable email domains, repeating-digit phones, test placeholder patterns).
+  - Implemented Lead Activity tracking (`POST /api/leads/:id/activities`, `GET /api/leads/:id/activities`) supporting 10 activity types with chronological sorting and server-attributed `createdById`.
+  - Implemented soft-delete archival for leads (`isArchived = true`) to prevent accidental destruction of historical activities, scores, and deals.
+  - Implemented immutable `AuditLog` recording across lead creation, update, archival, reassignment, company creation, and activity logging.
+  - Built responsive frontend UI:
+    - `LeadsPage.jsx`: Filterable, searchable table with duplicate/suspicious badges, Add Lead modal with live duplicate checking, Edit modal, and Archive modal.
+    - `LeadDetailPage.jsx`: Two-column overview with contact info, company info, sales assignment, interactive activity logging form, and visual chronological timeline.
+    - `CompaniesPage.jsx`: Searchable directory, Add Company modal, Edit modal, and company details drawer with associated active leads.
+  - Built and passed 18 automated backend verification tests (`npm run test:crm`).
+  - Verified 0 regressions across auth tests (`npm run test:auth`), database verification (`npm run test:db`), and health probes (`npm run test:health`).
+  - Verified client production build (`npm run build:client`) succeeded with 0 errors.
 
 ---
 

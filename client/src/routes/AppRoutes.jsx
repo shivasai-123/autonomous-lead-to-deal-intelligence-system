@@ -6,6 +6,9 @@ import DashboardPage from '../pages/DashboardPage';
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import UsersPage from '../pages/UsersPage';
+import LeadsPage from '../pages/LeadsPage';
+import LeadDetailPage from '../pages/LeadDetailPage';
+import CompaniesPage from '../pages/CompaniesPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import ProtectedRoute from './ProtectedRoute';
 
@@ -24,6 +27,32 @@ export function AppRoutes() {
           element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Phase 4 Core CRM Routes */}
+        <Route
+          path="leads"
+          element={
+            <ProtectedRoute>
+              <LeadsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="leads/:id"
+          element={
+            <ProtectedRoute>
+              <LeadDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="companies"
+          element={
+            <ProtectedRoute>
+              <CompaniesPage />
             </ProtectedRoute>
           }
         />

@@ -138,6 +138,10 @@ Prospective sales opportunities and inbound contacts.
 | `status` | `LeadStatus` | `@default(NEW)` | Lifecycle status (`NEW`, `CONTACTED`, `QUALIFIED`, `UNQUALIFIED`, `CONVERTED`, `LOST`) |
 | `priority` | `LeadPriority` | `@default(MEDIUM)` | Priority rating (`LOW`, `MEDIUM`, `HIGH`, `URGENT`) |
 | `score` | `Int` | `@default(0)` | Current computed qualification score (0–100) |
+| `isArchived` | `Boolean` | `@default(false)` | Soft-deletion flag preserving historical dependencies |
+| `isDuplicate` | `Boolean` | `@default(false)` | Duplicate detection match flag |
+| `isSuspicious` | `Boolean` | `@default(false)` | Explainable data anomaly warning flag |
+| `suspiciousReason` | `String?` | Nullable | Detailed explanation for suspicious flag |
 | `companyId` | `String?` | Foreign Key | Optional reference to `Company.id` |
 | `assignedToId` | `String?` | Foreign Key | Optional reference to assigned `User.id` |
 | `createdAt` | `DateTime` | `@default(now())` | Inbound capture timestamp |
@@ -150,7 +154,7 @@ Prospective sales opportunities and inbound contacts.
   - `scoreHistory`: Has many `LeadScore` items (`onDelete: Cascade`).
   - `deals`: Has many converted `Deal` records (`Deal[]`).
   - `recommendations`: Has many `Recommendation` items (`onDelete: Cascade`).
-- **Indexes**: `@@index([email])`, `@@index([companyId])`, `@@index([assignedToId])`, `@@index([status])`, `@@index([score])`, `@@index([createdAt])`.
+- **Indexes**: `@@index([email])`, `@@index([companyId])`, `@@index([assignedToId])`, `@@index([status])`, `@@index([score])`, `@@index([isArchived])`, `@@index([createdAt])`.
 
 ---
 

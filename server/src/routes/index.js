@@ -2,6 +2,8 @@ import { Router } from 'express';
 import healthRoutes from './health.routes.js';
 import authRoutes from './auth.routes.js';
 import userRoutes from './user.routes.js';
+import companyRoutes from './company.routes.js';
+import leadRoutes from './lead.routes.js';
 
 const apiRouter = Router();
 
@@ -12,10 +14,11 @@ apiRouter.use('/health', healthRoutes);
 apiRouter.use('/auth', authRoutes);
 apiRouter.use('/users', userRoutes);
 
+// Phase 4 CRM Core Routes
+apiRouter.use('/companies', companyRoutes);
+apiRouter.use('/leads', leadRoutes);
+
 // Modular mount points reserved for future phases:
-// apiRouter.use('/companies', companyRoutes);       // Phase 4
-// apiRouter.use('/leads', leadRoutes);             // Phase 4
-// apiRouter.use('/activities', activityRoutes);     // Phase 4
 // apiRouter.use('/pipeline', pipelineRoutes);       // Phase 5
 // apiRouter.use('/deals', dealRoutes);             // Phase 5
 // apiRouter.use('/recommendations', recommendationRoutes); // Phase 7
