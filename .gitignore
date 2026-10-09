@@ -5,19 +5,23 @@ node_modules/
 
 # Testing and coverage
 coverage/
+.nyc_output/
 
 # Production build outputs
 dist/
 build/
 *.tsbuildinfo
+.vite/
 
 # Environment variables & secrets
 .env
-.env.production
-.env.staging
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!**/.env.example
 *.pem
+*.key
+*.cert
+*.crt
 
 # Logs
 logs/
@@ -35,8 +39,16 @@ lerna-debug.log*
 *.sublime-workspace
 .DS_Store
 Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+*.swp
+*.swo
+*~
 
-# Database / SQLite local stubs (if any)
+# Database dumps, backups and local stubs
 *.sqlite
 *.sqlite3
 *.db
+*.dump
+*.sql.gz
+*.bak
