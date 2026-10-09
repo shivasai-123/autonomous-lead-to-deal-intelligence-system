@@ -8,20 +8,29 @@ import {
   Briefcase,
   Sparkles,
   Home,
-  Clock
+  ShieldCheck,
+  UserCheck
 } from 'lucide-react';
-
-const NAV_ITEMS = [
-  { label: 'Overview', to: '/', icon: Home, enabled: true },
-  { label: 'System Dashboard', to: '/dashboard', icon: LayoutDashboard, enabled: true },
-  { label: 'Leads Management', to: '/leads', icon: Users, enabled: false, phase: 'Phase 4' },
-  { label: 'Companies', to: '/companies', icon: Building2, enabled: false, phase: 'Phase 4' },
-  { label: 'Sales Pipeline', to: '/pipeline', icon: GitBranch, enabled: false, phase: 'Phase 5' },
-  { label: 'Deals & Revenue', to: '/deals', icon: Briefcase, enabled: false, phase: 'Phase 5' },
-  { label: 'Next-Best-Action', to: '/recommendations', icon: Sparkles, enabled: false, phase: 'Phase 7' },
-];
+import { useAuth } from '../../context/AuthContext';
 
 export function Sidebar() {
+  const { user, isAuthenticated } = useAuth();
+
+  const isManagement = user?.role === 'ADMIN' || user?.role === 'SALES_MANAGER';
+
+  const navItems = [
+    { label: 'Overview', to: '/', icon: Home, enabled: true },
+    { label: 'System Dashboard', to: '/dashboard', icon: LayoutDashboard, enabled: true },
+    ...(isManagement
+      ? [{ label: 'User Directory', to: '/users', icon: ShieldCheck, enabled: true, highlight: true }]
+      : []),
+    { label: 'Leads Management', to: '/leads', icon: Users, enabled: false, phase: 'Phase 4' },
+    { label: 'Companies', to: '/companies', icon: Building2, enabled: false, phase: 'Phase 4' },
+    { label: 'Sales Pipeline', to: '/pipeline', icon: GitBranch, enabled: false, phase: 'Phase 5' },
+    { label: 'Deals & Revenue', to: '/deals', icon: Briefcase, enabled: false, phase: 'Phase 5' },
+    { label: 'Next-Best-Action', to: '/recommendations', icon: Sparkles, enabled: false, phase: 'Phase 7' },
+  ];
+
   return (
     <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex md:flex-col min-h-[calc(100vh-4rem)]">
       <div className="p-4 flex-1">
@@ -29,7 +38,7 @@ export function Sidebar() {
           Navigation
         </p>
         <nav className="space-y-1">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             if (!item.enabled) {
               return (
@@ -69,12 +78,24 @@ export function Sidebar() {
         </nav>
       </div>
 
-      <div className="p-4 border-t border-slate-100">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <Clock className="w-3.5 h-3.5 text-slate-400" />
-          <span>SaaS Foundation v1.0.0</span>
+      {isAuthenticated && (
+        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-xs">
+              {user?.firstName?.[0] || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-slate-900 truncate">
+                {user?.firstName} {user?.lastName}
+              </p>
+              <p className="text-[10px] text-slate-500 truncate capitalize">
+                {user?.role?.toLowerCase()?.replace('_', ' ')}
+              </p>
+            </div>
+            <UserCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+          </div>
         </div>
-      </div>
+      )}
     </aside>
   );
 }

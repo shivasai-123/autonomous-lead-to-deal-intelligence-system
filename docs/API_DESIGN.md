@@ -6,7 +6,7 @@ The API follows RESTful design standards, returning standard JSON payloads, usin
 
 - **Base URI**: `/api`
 - **Data Format**: `application/json`
-- **Authentication**: HTTP `Authorization: Bearer <JWT_TOKEN>` header (starting in Phase 3)
+- **Authentication**: HTTP `Authorization: Bearer <JWT_TOKEN>` header
 - **Versioning**: Implicit URI prefix `/api/...`, with future breaking version bumps isolated via `/api/v2/...` if required.
 
 ---
@@ -27,7 +27,7 @@ Every successful API response contains a boolean `success: true`, a human-readab
 }
 ```
 
-### 2.2 Error Response (`400`, `401`, `403`, `404`, `422`, `500`)
+### 2.2 Error Response (`400`, `401`, `403`, `404`, `409`, `422`, `500`)
 Every failure response contains `success: false`, a high-level `message`, and an optional `errors` object or array:
 
 ```json
@@ -47,48 +47,76 @@ Every failure response contains `success: false`, a high-level `message`, and an
 | Code | Meaning | When Used |
 | :--- | :--- | :--- |
 | **`200 OK`** | Success | Standard read/update operations. |
-| **`201 Created`** | Created | Resource created successfully (e.g. lead created, activity logged). |
-| **`400 Bad Request`** | Client Error | Malformed JSON or invalid syntax. |
-| **`401 Unauthorized`** | Auth Required | Missing or expired JWT token. |
-| **`403 Forbidden`** | Access Denied | Insufficient role permissions (e.g., Rep accessing Admin logs). |
+| **`201 Created`** | Created | Resource created successfully (e.g., user registered). |
+| **`400 Bad Request`** | Client Error | Malformed JSON or input validation failure. |
+| **`401 Unauthorized`** | Auth Required | Missing, forged, or expired JWT token, or invalid credentials. |
+| **`403 Forbidden`** | Access Denied | Authenticated user lacks required role permissions (e.g., Rep accessing user admin). |
 | **`404 Not Found`** | Missing Resource | Requested endpoint or database ID does not exist. |
-| **`422 Unprocessable`** | Semantic Error | Valid syntax, but violates business rule (e.g., duplicate email). |
+| **`409 Conflict`** | Conflict | Duplicate resource state (e.g., email already registered). |
+| **`422 Unprocessable`** | Semantic Error | Valid syntax, but violates business rule. |
 | **`500 Internal Error`** | Server Error | Unhandled server error (details masked in production). |
 
 ---
 
-## 4. Operational Endpoints (Phase 1)
+## 4. Implemented Endpoints (Phases 1 & 3)
 
-### `GET /api/health`
-Validates that the Express backend service is active and responsive.
+### 4.1 System & Health (Phase 1)
+- `GET /api/health`
+  - **Auth**: None
+  - **Response**: `{ success: true, message: "CRM API is running", data: { status: "healthy", uptimeSeconds, timestamp, environment, version } }`
 
-- **Request**: `GET /api/health`
-- **Headers**: None required
-- **Response**:
-  ```json
-  {
-    "success": true,
-    "message": "CRM API is running",
-    "data": {
-      "status": "healthy",
-      "uptimeSeconds": 142,
-      "timestamp": "2026-10-08T16:30:00.000Z",
-      "environment": "development",
-      "version": "1.0.0"
-    }
-  }
-  ```
+### 4.2 Authentication (Phase 3)
+- `POST /api/auth/register`
+  - **Auth**: None (Public)
+  - **Body**: `{ "firstName": "Jane", "lastName": "Doe", "email": "rep@example.com", "password": "SecurePassword123!" }`
+  - **Rule**: Public registration strictly defaults to role `SALES_REPRESENTATIVE`.
+  - **Response (`201 Created`)**: `{ success: true, message: "User registered successfully", data: { user, token } }`
+
+- `POST /api/auth/login`
+  - **Auth**: None (Public)
+  - **Body**: `{ "email": "rep@example.com", "password": "SecurePassword123!" }`
+  - **Response (`200 OK`)**: `{ success: true, message: "Login successful", data: { user, token } }`
+
+- `GET /api/auth/me`
+  - **Auth**: `Bearer <token>`
+  - **Response (`200 OK`)**: `{ success: true, message: "User profile retrieved", data: { user } }`
+
+- `POST /api/auth/logout`
+  - **Auth**: `Bearer <token>`
+  - **Response (`200 OK`)**: `{ success: true, message: "Logged out successfully" }`
+
+### 4.3 User Administration (Phase 3)
+- `GET /api/users`
+  - **Auth**: `Bearer <token>`
+  - **Permissions**: `ADMIN`, `SALES_MANAGER`
+  - **Query Params**: `?role=SALES_REPRESENTATIVE&search=Jane&page=1&limit=50`
+  - **Response (`200 OK`)**: `{ success: true, data: { users: [...], pagination: { total, page, limit, totalPages } } }`
+
+- `GET /api/users/:id`
+  - **Auth**: `Bearer <token>`
+  - **Permissions**: `ADMIN`, `SALES_MANAGER`
+  - **Response (`200 OK`)**: `{ success: true, data: { user: { id, firstName, lastName, email, role, isActive, createdAt } } }`
+
+- `PATCH /api/users/:id/status`
+  - **Auth**: `Bearer <token>`
+  - **Permissions**: `ADMIN` only
+  - **Body**: `{ "isActive": false }`
+  - **Rule**: Administrator cannot deactivate their own account.
+  - **Response (`200 OK`)**: `{ success: true, message: "User status updated successfully", data: { user } }`
+
+- `PATCH /api/users/:id/role`
+  - **Auth**: `Bearer <token>`
+  - **Permissions**: `ADMIN` only
+  - **Body**: `{ "roleName": "SALES_MANAGER" }`
+  - **Rule**: Administrator cannot demote their own account.
+  - **Response (`200 OK`)**: `{ success: true, message: "User role updated successfully", data: { user } }`
 
 ---
 
-## 5. Future Endpoint Blueprint (Phase 3+)
+## 5. Future Endpoint Blueprint (Phase 4+)
 
 | Module | Method & Endpoint | Description | Phase |
 | :--- | :--- | :--- | :--- |
-| **Auth** | `POST /api/auth/register` | Register new platform user | Phase 3 |
-| **Auth** | `POST /api/auth/login` | Authenticate user & issue JWT | Phase 3 |
-| **Auth** | `GET /api/auth/me` | Fetch authenticated user profile | Phase 3 |
-| **Users** | `GET /api/users` | List tenant users (Admin/Manager) | Phase 3 |
 | **Companies** | `GET /api/companies` | List all tracked companies | Phase 4 |
 | **Companies** | `POST /api/companies` | Create new company record | Phase 4 |
 | **Leads** | `GET /api/leads` | Paginated lead list with score & tier | Phase 4 |

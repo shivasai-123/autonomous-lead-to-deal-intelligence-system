@@ -7,6 +7,7 @@
 ## 🎯 Project Overview
 
 Traditional CRMs are static databases requiring endless manual data entry and guesswork. The **Autonomous Lead-to-Deal Intelligence System** transforms sales management into an autonomous, proactive workflow:
+- **Secures multi-user access** with bcrypt password hashing and JWT role-based access control (`ADMIN`, `SALES_MANAGER`, `SALES_REPRESENTATIVE`).
 - **Tracks lead interactions** across web, email, calls, and meetings.
 - **Calculates dynamic lead scores** and classifies prospects into Hot, Warm, and Cold tiers.
 - **Detects stalled deals, duplicate entries, and anomalous signals**.
@@ -21,9 +22,10 @@ Traditional CRMs are static databases requiring endless manual data entry and gu
 | :--- | :--- |
 | **Frontend** | React 18, Vite, Tailwind CSS, React Router v6, Axios, Lucide Icons |
 | **Backend** | Node.js, Express.js (Modular REST API), Structured Logging |
-| **Database** | PostgreSQL, Prisma ORM (Foundation configured; schema in Phase 2) |
+| **Authentication** | bcryptjs (Cost 12), JSON Web Tokens (JWT), Role-Based Authorization |
+| **Database** | PostgreSQL 18.6, Prisma ORM 5.22.0 (Relational schema, migrations, seed data) |
 | **Tooling** | npm Workspaces, dotenv, Concurrently |
-| **Future (Phases 3, 8, 9)** | JWT, bcrypt, Socket.IO, OpenAI API, Recharts |
+| **Future (Phases 8, 9)** | Socket.IO, OpenAI API, Recharts |
 
 ---
 
@@ -40,12 +42,12 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   │   ├── components/
 │   │   │   ├── common/          # Reusable UI (Button, Card, Badge)
 │   │   │   └── layout/          # Layout UI (Navbar, Sidebar)
-│   │   ├── context/             # AppContext
+│   │   ├── context/             # AppContext, AuthContext
 │   │   ├── hooks/               # useHealthCheck hook
 │   │   ├── layouts/             # RootLayout
-│   │   ├── pages/               # HomePage, DashboardPage, NotFoundPage
-│   │   ├── routes/              # AppRoutes
-│   │   ├── services/            # Axios API client (api.js)
+│   │   ├── pages/               # HomePage, DashboardPage, LoginPage, RegisterPage, UsersPage, NotFoundPage
+│   │   ├── routes/              # AppRoutes, ProtectedRoute
+│   │   ├── services/            # Axios API client (api.js), Auth client (auth.js)
 │   │   ├── utils/               # Constants
 │   │   ├── App.jsx              # App root
 │   │   ├── index.css            # Tailwind directives
@@ -57,27 +59,31 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │
 ├── server/                      # Express Backend REST API
 │   ├── prisma/
-│   │   └── schema.prisma        # Prisma datasource & client setup
+│   │   ├── migrations/          # Versioned PostgreSQL SQL migrations
+│   │   ├── schema.prisma        # Prisma relational models & datasource config
+│   │   └── seed.js              # Database seed script (roles, stages, dev accounts)
 │   ├── src/
 │   │   ├── config/              # Environment config & Prisma client
-│   │   ├── controllers/         # HealthController
-│   │   ├── middlewares/         # Central error & 404 handlers
-│   │   ├── modules/             # Reserved for future domain modules
-│   │   ├── routes/              # Health & index router
-│   │   ├── services/            # HealthService
-│   │   ├── utils/               # Structured logger, standardized API responses
-│   │   ├── validators/          # Input validation schemas (Phase 3+)
+│   │   ├── controllers/         # HealthController, AuthController, UserController
+│   │   ├── middlewares/         # Central error handler, notFoundHandler, requireAuth, requireRole
+│   │   ├── routes/              # index.js, health.routes.js, auth.routes.js, user.routes.js
+│   │   ├── services/            # HealthService, AuthService, UserService
+│   │   ├── utils/               # Structured logger, standardized API responses, password & token helpers
+│   │   ├── validators/          # auth.validator.js, user.validator.js
 │   │   ├── app.js               # Express app instance & middleware stack
 │   │   └── server.js            # HTTP server launch & graceful shutdown
+│   ├── verify-health.js         # Automated health diagnostic check
+│   ├── verify-db.js             # Automated database relational verification
+│   ├── verify-auth.js           # Automated 10-test authentication and RBAC suite
 │   ├── .env.example
 │   └── package.json
 │
 ├── docs/                        # Architecture & Engineering Specifications
 │   ├── PROJECT_SPEC.md          # Full product & functional spec
 │   ├── ARCHITECTURE.md          # System & application architecture
-│   ├── DATABASE_DESIGN.md       # High-level entity & relation model
+│   ├── DATABASE_DESIGN.md       # Relational models, fields, delete rules & indexes
 │   ├── API_DESIGN.md            # REST API conventions & endpoints
-│   └── ROADMAP.md               # 10-Phase roadmap (Phase 1 completed)
+│   └── ROADMAP.md               # 10-Phase roadmap (Phases 1-3 completed)
 │
 ├── .gitignore                   # Git ignore rules
 ├── .env.example                 # Root environment template
@@ -90,12 +96,13 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Node.js**: v18.0.0 or higher (v24.x tested)
-- **npm**: v9.0.0 or higher (v11.x tested)
+- **Node.js**: v18.0.0 or higher
+- **PostgreSQL**: v14+ (v18.6 active locally on port 5432)
+- **npm**: v9.0.0 or higher
 
 ### 1. Installation
 
-Install all dependencies across the monorepo workspaces with a single command from the root directory:
+Install all dependencies across the monorepo workspaces:
 
 ```bash
 npm install
@@ -113,11 +120,21 @@ cp server/.env.example server/.env
 cp client/.env.example client/.env
 ```
 
-Default configuration runs the server on `http://localhost:5000` and the client on `http://localhost:5173`.
+Ensure `server/.env` contains your PostgreSQL `DATABASE_URL` and `JWT_SECRET`.
 
-### 3. Running the Development Servers
+### 3. Database Migration & Seeding
 
-You can launch both the backend and frontend concurrently from the root directory:
+```bash
+# Apply migrations to PostgreSQL
+npm run prisma:migrate --workspace=server
+
+# Seed system roles, pipeline stages, and development test accounts
+npm run db:seed --workspace=server
+```
+
+### 4. Running the Development Servers
+
+Launch both backend and frontend concurrently:
 
 ```bash
 npm run dev
@@ -135,39 +152,31 @@ npm run dev:client
 
 ---
 
-## 🔍 Verification & Health Check
-
-### Backend Health Check
-When the server is running, query the health diagnostic endpoint:
+## 🧪 Automated Verification Suites
 
 ```bash
-curl http://localhost:5000/api/health
+# 1. Verify backend health check endpoint (/api/health)
+npm run test:health
+
+# 2. Verify all 11 database models, relations, seed stages, and decimal handling
+npm run test:db
+
+# 3. Verify all 10 authentication, password hashing, JWT, and RBAC tests
+npm run test:auth
+
+# 4. Verify client production build
+npm run build:client
 ```
 
-Expected JSON response:
-```json
-{
-  "success": true,
-  "message": "CRM API is running",
-  "data": {
-    "status": "healthy",
-    "uptimeSeconds": 12,
-    "timestamp": "2026-10-08T16:30:00.000Z",
-    "environment": "development",
-    "version": "1.0.0"
-  }
-}
-```
-
-### Frontend Client
-Navigate to [http://localhost:5173](http://localhost:5173) in your browser:
-- **Overview Page (`/`)**: Displays platform pillars, architecture foundation, and quick start links.
-- **System Dashboard (`/dashboard`)**: Performs a live probe to `/api/health` displaying real-time server connectivity, status, uptime, and the Phase roadmap.
+### Development Test Accounts (Seeded for local testing only)
+- **Administrator**: `dev.admin@example.com` / `DevPassword123!`
+- **Sales Manager**: `dev.manager@example.com` / `DevPassword123!`
+- **Sales Representative**: `dev.rep@example.com` / `DevPassword123!`
 
 ---
 
 ## 🗺️ Roadmap & Current Status
 
-This repository is currently at **PHASE 1: Planning, Architecture & Foundation Setup (COMPLETED)**.
+This repository is currently at **PHASE 3: Authentication & User Management (COMPLETED)**.
 
 For detailed scope breakdowns of all 10 planned phases, refer to [`docs/ROADMAP.md`](./docs/ROADMAP.md).

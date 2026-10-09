@@ -1,14 +1,18 @@
 import { Router } from 'express';
 import healthRoutes from './health.routes.js';
+import authRoutes from './auth.routes.js';
+import userRoutes from './user.routes.js';
 
 const apiRouter = Router();
 
 // Phase 1 Foundation Route
 apiRouter.use('/health', healthRoutes);
 
+// Phase 3 Authentication & User Management Routes
+apiRouter.use('/auth', authRoutes);
+apiRouter.use('/users', userRoutes);
+
 // Modular mount points reserved for future phases:
-// apiRouter.use('/auth', authRoutes);               // Phase 3
-// apiRouter.use('/users', userRoutes);             // Phase 3
 // apiRouter.use('/companies', companyRoutes);       // Phase 4
 // apiRouter.use('/leads', leadRoutes);             // Phase 4
 // apiRouter.use('/activities', activityRoutes);     // Phase 4

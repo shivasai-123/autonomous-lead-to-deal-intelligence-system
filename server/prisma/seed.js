@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -62,19 +63,52 @@ async function main() {
   console.log(`  ✓ ${Object.keys(seededStages).length} pipeline stages seeded.`);
 
   // 3. Development-Only Verification Sample Data
-  // (Clearly marked development placeholders to verify foreign key relationships)
+  // (Clearly marked development placeholders to verify foreign key relationships and auth)
   console.log('  Seeding Development Sample Data to verify relationships...');
 
-  // Sample User (Development credentials only - not for production)
+  // Development password hash (DevPassword123!) - only for local testing
+  const devPasswordHash = await bcrypt.hash('DevPassword123!', 10);
+
+  // Seed Admin User (Development only)
+  const adminRole = seededRoles['ADMIN'];
+  await prisma.user.upsert({
+    where: { email: 'dev.admin@example.com' },
+    update: { passwordHash: devPasswordHash },
+    create: {
+      firstName: 'Dev',
+      lastName: 'Administrator',
+      email: 'dev.admin@example.com',
+      passwordHash: devPasswordHash,
+      isActive: true,
+      roleId: adminRole.id
+    }
+  });
+
+  // Seed Sales Manager User (Development only)
+  const managerRole = seededRoles['SALES_MANAGER'];
+  await prisma.user.upsert({
+    where: { email: 'dev.manager@example.com' },
+    update: { passwordHash: devPasswordHash },
+    create: {
+      firstName: 'Dev',
+      lastName: 'Manager',
+      email: 'dev.manager@example.com',
+      passwordHash: devPasswordHash,
+      isActive: true,
+      roleId: managerRole.id
+    }
+  });
+
+  // Seed Sales Representative User (Development only)
   const repRole = seededRoles['SALES_REPRESENTATIVE'];
   const sampleUser = await prisma.user.upsert({
     where: { email: 'dev.rep@example.com' },
-    update: {},
+    update: { passwordHash: devPasswordHash },
     create: {
       firstName: 'Alex',
       lastName: 'Morgan',
       email: 'dev.rep@example.com',
-      passwordHash: 'DEV_ONLY_INSECURE_PLACEHOLDER_HASH_PHASE_2',
+      passwordHash: devPasswordHash,
       isActive: true,
       roleId: repRole.id
     }

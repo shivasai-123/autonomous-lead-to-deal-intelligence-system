@@ -1,11 +1,31 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Layers, Activity, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Layers, Activity, CheckCircle2, AlertCircle, LogOut, User as UserIcon } from 'lucide-react';
 import { useHealthCheck } from '../../hooks/useHealthCheck';
+import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../common/Badge';
+import { Button } from '../common/Button';
 
 export function Navbar() {
-  const { health, loading, error } = useHealthCheck();
+  const { loading: healthLoading, error: healthError } = useHealthCheck();
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  const getRoleVariant = (role) => {
+    switch (role) {
+      case 'ADMIN':
+        return 'danger';
+      case 'SALES_MANAGER':
+        return 'warning';
+      default:
+        return 'primary';
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
@@ -26,8 +46,8 @@ export function Navbar() {
                 </span>
               </div>
             </Link>
-            <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-600 rounded">
-              Phase 1
+            <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold bg-brand-50 text-brand-700 border border-brand-200 rounded">
+              Phase 3
             </span>
           </div>
 
@@ -47,23 +67,60 @@ export function Navbar() {
             </Link>
           </nav>
 
-          {/* Backend Status indicator */}
+          {/* Right section: Health status & Auth controls */}
           <div className="flex items-center gap-3">
-            {loading ? (
-              <Badge variant="neutral" className="gap-1.5 py-1">
+            {/* Backend Health Badge */}
+            {healthLoading ? (
+              <Badge variant="neutral" className="gap-1.5 py-1 hidden sm:inline-flex">
                 <Activity className="w-3.5 h-3.5 animate-pulse text-slate-400" />
                 <span className="text-xs text-slate-500">Checking API...</span>
               </Badge>
-            ) : error ? (
-              <Badge variant="danger" className="gap-1.5 py-1">
+            ) : healthError ? (
+              <Badge variant="danger" className="gap-1.5 py-1 hidden sm:inline-flex">
                 <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
                 <span className="text-xs text-rose-700">API Offline</span>
               </Badge>
             ) : (
-              <Badge variant="success" className="gap-1.5 py-1">
+              <Badge variant="success" className="gap-1.5 py-1 hidden sm:inline-flex">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 <span className="text-xs text-emerald-700">API Connected</span>
               </Badge>
+            )}
+
+            {/* Auth Controls */}
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
+                <div className="text-right hidden sm:block">
+                  <div className="text-xs font-semibold text-slate-800 leading-tight">
+                    {user?.firstName} {user?.lastName}
+                  </div>
+                  <Badge variant={getRoleVariant(user?.role)} className="text-[10px] py-0 px-1.5 mt-0.5">
+                    {user?.role?.replace('_', ' ')}
+                  </Badge>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  title="Sign out of CRM session"
+                  icon={LogOut}
+                >
+                  <span className="hidden sm:inline">Sign Out</span>
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link to="/login">
+                  <Button variant="ghost" size="sm" icon={UserIcon}>
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/register">
+                  <Button variant="primary" size="sm">
+                    Register
+                  </Button>
+                </Link>
+              </div>
             )}
           </div>
         </div>

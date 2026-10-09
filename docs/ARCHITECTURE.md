@@ -8,19 +8,20 @@ The system uses a clean client-server architecture with strict separation betwee
 ┌────────────────────────────────────────────────────────┐
 │                   React Frontend (SPA)                 │
 │         Vite + Tailwind CSS + React Router + Axios     │
+│   (AuthContext + ProtectedRoute + Login/Register UI)   │
 └───────────────────────────┬────────────────────────────┘
-                            │ HTTPS / REST (JSON)
+                            │ HTTPS / REST (JSON + Bearer JWT)
                             ▼
 ┌────────────────────────────────────────────────────────┐
 │                   Express.js Backend                   │
 │  ┌──────────────────────────────────────────────────┐  │
-│  │ Middlewares (CORS, JSON Parser, Auth, Error)     │  │
+│  │ Middlewares (CORS, JSON Parser, Auth, RBAC, Error│  │
 │  ├──────────────────────────────────────────────────┤  │
-│  │ Route Aggregator (/api/health, /api/leads, etc.) │  │
+│  │ Route Aggregator (/api/auth, /api/users, etc.)   │  │
 │  ├──────────────────────────────────────────────────┤  │
-│  │ Controllers (HTTP Validation & Serialization)    │  │
+│  │ Controllers (Auth, User, Health)                 │  │
 │  ├──────────────────────────────────────────────────┤  │
-│  │ Services (Business Logic & Intelligence Engines) │  │
+│  │ Services (AuthService, UserService)              │  │
 │  └──────────────────────────┬───────────────────────┘  │
 └─────────────────────────────┼──────────────────────────┘
                               │
@@ -39,8 +40,9 @@ The system uses a clean client-server architecture with strict separation betwee
 ### Tech Stack
 - **Framework / Bundler**: React 18+ with Vite for ultra-fast HMR and optimized production bundles.
 - **Styling**: Tailwind CSS configured with a SaaS color palette (slate neutral with indigo/brand accents).
-- **Navigation**: React Router v6 implementing nested routing layouts.
-- **HTTP Client**: Axios with centralized request/response interceptors.
+- **Navigation & Routing**: React Router v6 implementing nested routing layouts, `ProtectedRoute`, and role-based access gates.
+- **HTTP Client**: Axios with centralized request/response interceptors automatically attaching Bearer JWT and handling 401 expiration.
+- **Authentication State**: `AuthContext` managing active user state, login, registration, logout, and automatic session restoration on page reload.
 - **Component Architecture**: Atomic, composable UI primitives (`Button`, `Card`, `Badge`) separated from page-level views.
 
 ### Directory Structure
@@ -50,14 +52,14 @@ client/src/
 ├── components/       # Composable UI components
 │   ├── common/       # General-purpose UI (Button, Card, Badge)
 │   └── layout/       # App shell components (Navbar, Sidebar)
-├── context/          # React Context providers (AppContext)
+├── context/          # React Context providers (AppContext, AuthContext)
 ├── hooks/            # Custom React hooks (useHealthCheck)
 ├── layouts/          # Page layout shells (RootLayout)
-├── pages/            # Routable pages (HomePage, DashboardPage, NotFoundPage)
-├── routes/           # Routing table (AppRoutes.jsx)
-├── services/         # API HTTP communication client (api.js)
+├── pages/            # Routable pages (HomePage, DashboardPage, LoginPage, RegisterPage, UsersPage, NotFoundPage)
+├── routes/           # Routing table (AppRoutes.jsx, ProtectedRoute.jsx)
+├── services/         # API HTTP communication client (api.js, auth.js)
 ├── utils/            # Shared constants, helpers
-├── App.jsx           # App composition root
+├── App.jsx           # App composition root with AuthProvider
 ├── main.jsx          # DOM entry point
 └── index.css         # Tailwind base and global directives
 ```
@@ -67,43 +69,73 @@ client/src/
 ## 3. Backend Architecture (Server Layer)
 
 ### Layered Separation of Concerns
-1. **Routes Layer (`routes/`)**: Defines URL patterns and maps HTTP verbs to controller methods. No business logic exists here.
-2. **Controllers Layer (`controllers/`)**: Extracts request parameters, headers, and body; invokes relevant services; and formats responses using standardized response helpers.
-3. **Services Layer (`services/`)**: Contains pure business logic (lead scoring calculations, next-best-action generation, state transitions). Completely decoupled from Express HTTP objects.
-4. **Middlewares Layer (`middlewares/`)**: Centralizes cross-cutting concerns (CORS, error trapping, 404 handling, future JWT verification).
-5. **Validators Layer (`validators/`)**: Prepared for incoming request payload validation.
-6. **Data Access Layer (`config/prisma.js` & `prisma/`)**: Manages database queries via Prisma ORM.
+1. **Routes Layer (`routes/`)**: Defines URL patterns and maps HTTP verbs to controller methods. Protected routes are secured by `requireAuth` and `requireRole`.
+2. **Controllers Layer (`controllers/`)**: Extracts request parameters, headers, and body; invokes relevant services; and formats responses using standardized response helpers (`sendSuccess`, `sendError`).
+3. **Services Layer (`services/`)**: Contains pure business logic (`AuthService`, `UserService`). Encapsulates password hashing, token issuance, user serialization, and database queries.
+4. **Middlewares Layer (`middlewares/`)**: Centralizes cross-cutting concerns:
+   - `requireAuth`: Verifies Bearer JWT tokens and attaches authenticated user profiles to `req.user`.
+   - `requireRole(...roles)`: Enforces role-based permissions (`ADMIN`, `SALES_MANAGER`, `SALES_REPRESENTATIVE`).
+   - `errorHandler`: Global exception handler sanitizing error responses.
+   - `notFoundHandler`: Catches unmapped routes.
+5. **Validators Layer (`validators/`)**: Input sanitization and payload validation schemas (`auth.validator.js`, `user.validator.js`).
+6. **Data Access Layer (`config/prisma.js` & `prisma/`)**: Manages database queries via Prisma ORM connected to PostgreSQL.
 
 ### Directory Structure
 ```text
 server/
 ├── prisma/
-│   └── schema.prisma        # Prisma data models & datasource config
+│   ├── migrations/          # Version-controlled SQL migrations
+│   ├── schema.prisma        # Prisma data models & datasource config
+│   └── seed.js              # Seed script (roles, stages, dev accounts)
 ├── src/
 │   ├── config/              # Environment config & Prisma client instance
-│   ├── controllers/         # HTTP request/response handlers
-│   ├── middlewares/         # Central error handler, not-found handler
-│   ├── modules/             # Future self-contained CRM domain modules
-│   ├── routes/              # Express route declarations
-│   ├── services/            # Core domain & intelligence services
-│   ├── utils/               # Structured logger, standardized API responses
-│   ├── validators/          # Input validation schemas (Phase 3+)
+│   ├── controllers/         # HealthController, AuthController, UserController
+│   ├── middlewares/         # Central error handler, notFoundHandler, requireAuth, requireRole
+│   ├── modules/             # Reserved for future domain modules
+│   ├── routes/              # index.js, health.routes.js, auth.routes.js, user.routes.js
+│   ├── services/            # HealthService, AuthService, UserService
+│   ├── utils/               # Structured logger, standardized API responses, password & token helpers
+│   ├── validators/          # auth.validator.js, user.validator.js
 │   ├── app.js               # Express app bootstrapping and middleware pipeline
 │   └── server.js            # HTTP server launch, signal trapping & graceful shutdown
+├── verify-health.js         # Backend health diagnostic test
+├── verify-db.js             # Database model and relational join test
+├── verify-auth.js           # 10-test authentication and RBAC suite
 ├── .env.example             # Documented environment template
 └── package.json
 ```
 
 ---
 
-## 4. Security Architecture & Principles
+## 4. Authentication & Security Architecture (Phase 3)
 
-1. **Zero Secret Exposure**: Third-party API keys (OpenAI) and internal secrets (JWT secrets, database credentials) exist exclusively on the server and are accessed via environment variables.
-2. **No Plaintext Passwords**: Password hashing via `bcrypt` (enforced in Phase 3).
-3. **Centralized Error Sanitization**: Unhandled exceptions are logged internally via structured logging; client responses hide stack traces in production to prevent information leakage.
-4. **CORS Governance**: Express CORS middleware restricts API requests to the configured frontend origin (`CLIENT_URL`).
-5. **SQL Injection Prevention**: Prisma ORM uses parameterized queries exclusively for all database interactions.
-6. **Role-Based Authorization (RBAC)**: Architecture designed for middleware gates (`requireRole('admin')`, `requireRole('manager')`) across sensitive routes.
+### 4.1 Password Security
+- Passwords are never stored in plaintext.
+- Hashes are generated via `bcryptjs` with cost factor 12.
+- Password hashes are never logged, never sent over the wire, and stripped from all API responses via `formatSafeUser()`.
+
+### 4.2 Token Issuance & Claims
+- Authentication uses JSON Web Tokens (JWT) signed with `JWT_SECRET` from `server/.env`.
+- Tokens contain minimal claims:
+  ```json
+  {
+    "id": "u-uuid-here",
+    "email": "user@company.com",
+    "role": "SALES_REPRESENTATIVE"
+  }
+  ```
+- Expiration is configurable via `JWT_EXPIRES_IN` (defaults to `7d`).
+
+### 4.3 Role-Based Access Control (RBAC)
+- Roles are verified at both the route middleware level (`requireRole`) and database level:
+  - **ADMIN**: Unrestricted access to user directory, status toggling, and role modification.
+  - **SALES_MANAGER**: Directory visibility, pipeline oversight.
+  - **SALES_REPRESENTATIVE**: Access restricted to assigned CRM entities. Public self-registration strictly defaults to `SALES_REPRESENTATIVE`.
+
+### 4.4 Client Session & Token Storage
+- Bearer tokens are stored in `localStorage` under `autolead_jwt_token`.
+- Centralized token management via `api.js` ensures components never manipulate raw storage directly.
+- On 401 Unauthorized responses, Axios interceptor clears stored credentials and fires a global event resetting the UI to logged-out state, avoiding infinite redirect loops.
 
 ---
 
@@ -114,5 +146,6 @@ server/
 | **React + Vite** | High performance, rapid developer feedback loop, modern component ecosystem. |
 | **Tailwind CSS** | Utility-first styling enabling consistent SaaS design systems without bloated custom CSS files. |
 | **Node.js / Express** | Lightweight, event-driven runtime ideal for RESTful I/O, easy integration with Prisma and future Socket.IO streams. |
-| **PostgreSQL + Prisma** | Strict relational integrity, foreign key cascades, migration history, type-safe database queries. MongoDB was explicitly rejected to preserve relational consistency across users, leads, deals, and stages. |
+| **PostgreSQL + Prisma** | Strict relational integrity, foreign key cascades, migration history, type-safe database queries. |
+| **bcryptjs + JWT** | Industry-standard password hashing and stateless authorization tokens with cross-platform stability. |
 | **OpenAI Integration** | Isolated as a backend service client (Phase 8), keeping AI logic transparent, testable, and secure. |

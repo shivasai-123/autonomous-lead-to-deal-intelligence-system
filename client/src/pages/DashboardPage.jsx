@@ -7,15 +7,19 @@ import {
   AlertCircle,
   Cpu,
   Layers,
-  Database
+  Database,
+  UserCheck,
+  ShieldCheck
 } from 'lucide-react';
 import { useHealthCheck } from '../hooks/useHealthCheck';
+import { useAuth } from '../context/AuthContext';
 import { Card, CardHeader, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 
 export function DashboardPage() {
   const { health, loading, error, refetch } = useHealthCheck();
+  const { user } = useAuth();
 
   return (
     <div className="space-y-6">
@@ -38,6 +42,41 @@ export function DashboardPage() {
           {loading ? 'Checking...' : 'Refresh API Status'}
         </Button>
       </div>
+
+      {/* Authenticated User Session Card */}
+      {user && (
+        <Card className="border-indigo-100 bg-gradient-to-r from-indigo-50/50 via-white to-slate-50">
+          <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold text-base shadow-sm shadow-brand-500/20">
+                {user.firstName?.[0] || 'U'}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-slate-900 text-base">
+                    {user.firstName} {user.lastName}
+                  </h3>
+                  <Badge variant="primary" className="text-xs">
+                    {user.role}
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">{user.email}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 text-xs text-slate-600 border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-4">
+              <div className="flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4 text-emerald-600" />
+                <span>JWT Session Active</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-brand-600" />
+                <span>RBAC Authorized</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Service Health Card */}
       <Card>
@@ -131,27 +170,27 @@ export function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="opacity-90">
+          <Card className="border-brand-200 bg-brand-50/20">
             <CardContent className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500">PHASE 2</span>
-                <Badge variant="neutral">Upcoming</Badge>
+                <span className="text-xs font-bold text-brand-700">PHASE 2</span>
+                <Badge variant="success">Completed</Badge>
               </div>
               <h4 className="font-semibold text-slate-900 text-sm">Database & Prisma Setup</h4>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600">
                 PostgreSQL schema, relations (Users, Leads, Companies, Deals, Activities), migrations & seeding.
               </p>
             </CardContent>
           </Card>
 
-          <Card className="opacity-90">
+          <Card className="border-brand-200 bg-brand-50/20">
             <CardContent className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500">PHASE 3</span>
-                <Badge variant="neutral">Upcoming</Badge>
+                <span className="text-xs font-bold text-brand-700">PHASE 3</span>
+                <Badge variant="success">Completed</Badge>
               </div>
               <h4 className="font-semibold text-slate-900 text-sm">Auth & User Management</h4>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600">
                 JWT tokens, bcrypt password hashing, role-based authorization (Admin, Manager, Rep).
               </p>
             </CardContent>
