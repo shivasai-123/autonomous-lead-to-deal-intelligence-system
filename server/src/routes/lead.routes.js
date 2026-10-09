@@ -15,11 +15,23 @@ router.get('/', LeadController.listLeads);
 // POST /api/leads/check-duplicates - Check duplicate matches before saving
 router.post('/check-duplicates', LeadController.checkDuplicates);
 
+// POST /api/leads/recalculate-scores - Batch recalculate all active lead scores (ADMIN, SALES_MANAGER)
+router.post('/recalculate-scores', requireRole('ADMIN', 'SALES_MANAGER'), LeadController.batchRecalculateScores);
+
 // POST /api/leads - Create lead with duplicate & suspicious detection
 router.post('/', LeadController.createLead);
 
 // GET /api/leads/:id - Lead detail with company, rep, and activity timeline
 router.get('/:id', LeadController.getLeadById);
+
+// GET /api/leads/:id/intelligence - Lead intelligence profile and explainability breakdown
+router.get('/:id/intelligence', LeadController.getLeadIntelligence);
+
+// GET /api/leads/:id/score-history - Chronological score snapshots history
+router.get('/:id/score-history', LeadController.getScoreHistory);
+
+// POST /api/leads/:id/recalculate-score - On-demand single lead score recalculation
+router.post('/:id/recalculate-score', LeadController.recalculateLeadScore);
 
 // PATCH /api/leads/:id - Update lead information
 router.patch('/:id', LeadController.updateLead);

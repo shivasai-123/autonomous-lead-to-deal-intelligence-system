@@ -186,8 +186,9 @@ Audit trail of qualification score fluctuations explaining *why* a lead score ch
 | Field | Type | Attributes | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | `String` | `@id @default(uuid())` | Unique UUID identifier |
-| `score` | `Int` | Required | Score value snapshot (e.g. 65) |
-| `reason` | `String` | Required | Explanatory rationale (e.g. "+25 Demo request submitted") |
+| `score` | `Int` | Required | Score value snapshot (0–100) |
+| `reason` | `String` | Required | Explanatory rationale summary |
+| `breakdown` | `Json?` | Nullable | Detailed JSON snapshot of components, previous/new scores, classification, priority, and reasons |
 | `leadId` | `String` | Foreign Key | Parent `Lead.id` |
 | `sourceActivityId` | `String?` | Foreign Key | Triggering `LeadActivity.id` |
 | `createdAt` | `DateTime` | `@default(now())` | Score computation timestamp |

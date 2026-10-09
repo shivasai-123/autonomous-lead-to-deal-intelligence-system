@@ -10,6 +10,12 @@ export const crmService = {
   archiveLead: (id) => apiClient.delete(`/leads/${id}`),
   checkDuplicates: (data) => apiClient.post('/leads/check-duplicates', data),
 
+  // Lead Intelligence APIs (Phase 6)
+  getLeadIntelligence: (leadId) => apiClient.get(`/leads/${leadId}/intelligence`),
+  getLeadScoreHistory: (leadId) => apiClient.get(`/leads/${leadId}/score-history`),
+  recalculateLeadScore: (leadId) => apiClient.post(`/leads/${leadId}/recalculate-score`),
+  batchRecalculateScores: () => apiClient.post('/leads/recalculate-scores'),
+
   // Company APIs
   getCompanies: (params = {}) => apiClient.get('/companies', { params }),
   getCompany: (id) => apiClient.get(`/companies/${id}`),

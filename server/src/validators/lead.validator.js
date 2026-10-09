@@ -123,6 +123,8 @@ export function validateLeadQueryParams(query) {
     companyId: query.companyId ? String(query.companyId).trim() : null,
     assignedToId: query.assignedToId ? String(query.assignedToId).trim() : null,
     isArchived: query.isArchived === 'true',
+    classification: query.classification ? String(query.classification).trim().toUpperCase() : null,
+    isStalled: query.isStalled !== undefined && query.isStalled !== '' ? String(query.isStalled).toLowerCase() === 'true' : null,
     page: parseInt(query.page, 10) || 1,
     limit: parseInt(query.limit, 10) || 10,
     sortBy: query.sortBy ? String(query.sortBy).trim() : 'createdAt',
@@ -139,6 +141,10 @@ export function validateLeadQueryParams(query) {
 
   if (params.priority && !VALID_LEAD_PRIORITIES.includes(params.priority)) {
     errors.priority = `Invalid priority filter. Allowed: ${VALID_LEAD_PRIORITIES.join(', ')}`;
+  }
+
+  if (params.classification && !['HOT', 'WARM', 'COLD'].includes(params.classification)) {
+    errors.classification = 'Invalid classification filter. Allowed: HOT, WARM, COLD';
   }
 
   const allowedSortFields = ['createdAt', 'updatedAt', 'score', 'lastName', 'priority', 'status'];

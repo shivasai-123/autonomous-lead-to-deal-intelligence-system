@@ -1,5 +1,6 @@
 import { LeadService } from '../services/lead.service.js';
 import { DuplicateService } from '../services/duplicate.service.js';
+import { ScoringService } from '../services/scoring.service.js';
 import { sendSuccess, sendError } from '../utils/apiResponse.js';
 import {
   validateCreateLeadInput,
@@ -99,6 +100,45 @@ export class LeadController {
       const { id } = req.params;
       const result = await LeadService.archiveLead(id, req.user);
       return sendSuccess(res, result.message, { lead: result.lead }, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getLeadIntelligence(req, res, next) {
+    try {
+      const { id } = req.params;
+      const intelligence = await ScoringService.getLeadIntelligence(id, req.user);
+      return sendSuccess(res, 'Lead intelligence retrieved successfully', intelligence, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getScoreHistory(req, res, next) {
+    try {
+      const { id } = req.params;
+      const history = await ScoringService.getScoreHistory(id, req.user);
+      return sendSuccess(res, 'Score history retrieved successfully', { history }, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async recalculateLeadScore(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await ScoringService.recalculateLeadScore(id, req.user);
+      return sendSuccess(res, 'Lead score recalculated successfully', result, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async batchRecalculateScores(req, res, next) {
+    try {
+      const result = await ScoringService.batchRecalculateScores(req.user);
+      return sendSuccess(res, 'Batch lead scores recalculated successfully', result, 200);
     } catch (error) {
       next(error);
     }

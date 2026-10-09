@@ -1,5 +1,6 @@
 import { getPrismaClient } from '../config/prisma.js';
 import { AuditService } from './audit.service.js';
+import { ScoringService } from './scoring.service.js';
 
 export class ActivityService {
   /**
@@ -132,7 +133,21 @@ export class ActivityService {
       }
     });
 
-    return activity;
+    // Automatically recalculate lead intelligence & update score/priority
+    let intelligence = null;
+    try {
+      intelligence = await ScoringService.recalculateLeadScore(leadId, user, {
+        causalActivityId: activity.id
+      });
+    } catch (scoringErr) {
+      // Log error but do not drop the successfully created activity
+      console.error(`[ScoringService] Score recalculation failed for lead ${leadId}:`, scoringErr.message);
+    }
+
+    return {
+      activity,
+      intelligence
+    };
   }
 }
 

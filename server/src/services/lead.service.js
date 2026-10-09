@@ -1,6 +1,7 @@
 import { getPrismaClient } from '../config/prisma.js';
 import { DuplicateService } from './duplicate.service.js';
 import { AuditService } from './audit.service.js';
+import { classifyScore, STALLED_THRESHOLD_DAYS } from '../config/scoring.config.js';
 
 export class LeadService {
   /**
@@ -12,6 +13,8 @@ export class LeadService {
       search,
       status,
       priority,
+      classification,
+      isStalled,
       companyId,
       assignedToId,
       isArchived,
@@ -45,6 +48,55 @@ export class LeadService {
     // Priority filter
     if (priority) {
       where.priority = priority;
+    }
+
+    // Classification filter (HOT: 70-100, WARM: 40-69, COLD: 0-39)
+    if (classification) {
+      const upper = String(classification).toUpperCase();
+      if (upper === 'HOT') {
+        where.score = { gte: 70 };
+      } else if (upper === 'WARM') {
+        where.score = { gte: 40, lte: 69 };
+      } else if (upper === 'COLD') {
+        where.score = { lte: 39 };
+      }
+    }
+
+    // Stalled status filter (Threshold: 14 days)
+    if (isStalled !== undefined && isStalled !== null && isStalled !== '') {
+      const isStalledBool = String(isStalled).toLowerCase() === 'true';
+      const cutoff = new Date(Date.now() - STALLED_THRESHOLD_DAYS * 24 * 60 * 60 * 1000);
+
+      if (isStalledBool) {
+        where.isArchived = false;
+        where.status = { notIn: ['CONVERTED', 'LOST'] };
+        where.activities = { none: { occurredAt: { gte: cutoff } } };
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { activities: { some: {} } },
+              { createdAt: { lte: cutoff } }
+            ]
+          }
+        ];
+      } else {
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { status: { in: ['CONVERTED', 'LOST'] } },
+              { activities: { some: { occurredAt: { gte: cutoff } } } },
+              {
+                AND: [
+                  { activities: { none: {} } },
+                  { createdAt: { gt: cutoff } }
+                ]
+              }
+            ]
+          }
+        ];
+      }
     }
 
     // Company filter
@@ -84,6 +136,11 @@ export class LeadService {
           assignedTo: {
             select: { id: true, firstName: true, lastName: true, email: true }
           },
+          activities: {
+            orderBy: { occurredAt: 'desc' },
+            take: 1,
+            select: { occurredAt: true }
+          },
           _count: {
             select: { activities: true, deals: true }
           }
@@ -92,8 +149,25 @@ export class LeadService {
       prisma.lead.count({ where })
     ]);
 
+    const enrichedLeads = leads.map((l) => {
+      const lastActivityAt = l.activities?.[0]?.occurredAt || null;
+      const refDate = lastActivityAt ? new Date(lastActivityAt) : new Date(l.createdAt);
+      const daysSinceLastActivity = Math.floor(Math.max(0, Date.now() - refDate.getTime()) / (1000 * 60 * 60 * 24));
+      const isTerminal = l.status === 'CONVERTED' || l.status === 'LOST';
+      const stalled = !l.isArchived && !isTerminal && daysSinceLastActivity >= STALLED_THRESHOLD_DAYS;
+
+      const { activities, ...leadData } = l;
+      return {
+        ...leadData,
+        classification: classifyScore(l.score),
+        isStalled: stalled,
+        daysSinceLastActivity,
+        lastActivityAt
+      };
+    });
+
     return {
-      leads,
+      leads: enrichedLeads,
       pagination: {
         total,
         page,

@@ -24,7 +24,14 @@ import {
   CheckCircle2,
   Edit2,
   Trash2,
-  X
+  X,
+  Flame,
+  Sun,
+  Snowflake,
+  Zap,
+  TrendingUp,
+  History,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { crmService } from '../services/crm';
@@ -86,6 +93,10 @@ export function LeadDetailPage() {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
+  // Intelligence State (Phase 6)
+  const [intelligence, setIntelligence] = useState(null);
+  const [recalculatingScore, setRecalculatingScore] = useState(false);
+
   // Activities State
   const [activities, setActivities] = useState([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
@@ -120,15 +131,28 @@ export function LeadDetailPage() {
   const [convertLoading, setConvertLoading] = useState(false);
   const [convertError, setConvertError] = useState(null);
 
-  // Fetch Lead & Activities
+  // Fetch Lead & Intelligence Details
   const fetchLeadDetails = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await crmService.getLead(id);
-      if (res?.data?.lead) {
-        setLead(res.data.lead);
-        setActivities(res.data.lead.activities || []);
+      const [leadRes, intelRes] = await Promise.allSettled([
+        crmService.getLead(id),
+        crmService.getLeadIntelligence(id),
+      ]);
+
+      if (leadRes.status === 'fulfilled' && leadRes.value?.data?.lead) {
+        setLead(leadRes.value.data.lead);
+        setActivities(leadRes.value.data.lead.activities || []);
+      } else if (leadRes.status === 'rejected') {
+        throw leadRes.reason;
+      }
+
+      if (intelRes.status === 'fulfilled') {
+        const intelData = intelRes.value?.data?.data || intelRes.value?.data;
+        if (intelData) {
+          setIntelligence(intelData);
+        }
       }
     } catch (err) {
       setError(err.message || 'Failed to retrieve lead record');
@@ -259,20 +283,56 @@ export function LeadDetailPage() {
       };
 
       const res = await crmService.createLeadActivity(id, payload);
-      if (res?.data?.activity) {
-        setActivities([res.data.activity, ...activities]);
+      const activityData = res?.data?.data?.activity || res?.data?.activity;
+      const intelData = res?.data?.data?.intelligence || res?.data?.intelligence;
+
+      if (activityData) {
+        setActivities((prev) => [activityData, ...prev]);
         setActivityForm({
           type: 'CALL',
           description: '',
           occurredAt: new Date().toISOString().slice(0, 16),
         });
-        setSuccessMessage('Activity event logged successfully!');
+
+        if (intelData) {
+          setIntelligence(intelData);
+          setLead((prev) =>
+            prev ? { ...prev, score: intelData.score, priority: intelData.priority } : prev
+          );
+        } else {
+          fetchLeadDetails();
+        }
+
+        setSuccessMessage('Activity event logged & intelligence updated!');
         setTimeout(() => setSuccessMessage(null), 3000);
       }
     } catch (err) {
       setActivityFormError(err.message || 'Failed to record activity');
     } finally {
       setActivitySubmitting(false);
+    }
+  };
+
+  // Manual Recalculate Lead Score (Phase 6)
+  const handleRecalculateScore = async () => {
+    try {
+      setRecalculatingScore(true);
+      const res = await crmService.recalculateLeadScore(id);
+      const intelData = res?.data?.data || res?.data;
+      if (intelData) {
+        setIntelligence(intelData);
+        setLead((prev) =>
+          prev ? { ...prev, score: intelData.score, priority: intelData.priority } : prev
+        );
+        setSuccessMessage(
+          `Lead intelligence recalculated: Score ${intelData.score}/100 (${intelData.classification}, ${intelData.priority} Priority)`
+        );
+        setTimeout(() => setSuccessMessage(null), 4000);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to recalculate lead score');
+    } finally {
+      setRecalculatingScore(false);
     }
   };
 
@@ -336,6 +396,25 @@ export function LeadDetailPage() {
               <Badge variant={PRIORITY_VARIANTS[lead.priority] || 'neutral'}>
                 {lead.priority} Priority
               </Badge>
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                  (intelligence?.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')) === 'HOT'
+                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                    : (intelligence?.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')) === 'WARM'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : 'bg-sky-50 text-sky-700 border-sky-200'
+                }`}
+              >
+                <span>
+                  {(intelligence?.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')) === 'HOT'
+                    ? '🔥'
+                    : (intelligence?.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')) === 'WARM'
+                    ? '☀️'
+                    : '❄️'}
+                </span>
+                <span>{intelligence?.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')}</span>
+                <span className="font-extrabold ml-0.5">({intelligence?.score ?? lead.score ?? 0})</span>
+              </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               {lead.jobTitle ? `${lead.jobTitle} · ` : ''}
@@ -407,6 +486,269 @@ export function LeadDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Lead Intelligence & Qualification Panel (Phase 6) */}
+      <Card className="border-indigo-100 bg-gradient-to-br from-white to-slate-50 shadow-sm overflow-hidden">
+        <div className="bg-slate-900 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center">
+              <Zap className="w-5 h-5 text-indigo-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-white tracking-wide">Lead Intelligence & Engagement Engine</h2>
+                <Badge variant="primary" className="text-[10px] uppercase tracking-wider bg-indigo-500/20 text-indigo-200 border-indigo-400/30">
+                  Deterministic
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-300">
+                Rule-driven engagement qualification, commercial intent velocity, and activity scoring.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRecalculateScore}
+            disabled={recalculatingScore}
+            loading={recalculatingScore}
+            icon={RefreshCw}
+            className="border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white"
+          >
+            Recalculate Score
+          </Button>
+        </div>
+
+        <CardContent className="p-6 space-y-6">
+          {/* Stalled Status Alert Banner */}
+          {intelligence?.isStalled ? (
+            <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3">
+              <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-amber-900 text-sm">Stalled Lead Alert</span>
+                  <Badge variant="warning" className="text-[10px] py-0 px-1.5 bg-amber-200 text-amber-900">
+                    {intelligence.daysSinceLastActivity} Days Inactive
+                  </Badge>
+                </div>
+                <p className="text-xs text-amber-800">
+                  {intelligence.stalledReason ||
+                    `No qualifying activity has been recorded for ${intelligence.daysSinceLastActivity} days (threshold: 14 days). Outreach or re-engagement cadence is recommended.`}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-800">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span className="font-semibold">Active Touchpoint Cadence:</span>
+                <span>
+                  {intelligence?.lastActivityAt
+                    ? `Last engagement recorded ${intelligence.daysSinceLastActivity} day${intelligence.daysSinceLastActivity === 1 ? '' : 's'} ago`
+                    : 'Active new prospect within 14-day threshold'}
+                </span>
+              </div>
+              <span className="text-emerald-700 font-medium">Within 14-day window</span>
+            </div>
+          )}
+
+          {/* 3 Metric Cards: Score Gauge, Engagement Temperature, Synced Priority */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Metric 1: Total Calculated Score */}
+            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium uppercase tracking-wider">Lead Score</span>
+                {intelligence?.scoreChange !== undefined && (
+                  <span className={`text-[11px] font-semibold flex items-center gap-0.5 ${
+                    intelligence.scoreChange > 0 ? 'text-emerald-600' : intelligence.scoreChange < 0 ? 'text-rose-600' : 'text-slate-400'
+                  }`}>
+                    <TrendingUp className="w-3 h-3" />
+                    {intelligence.scoreChange > 0 ? `+${intelligence.scoreChange}` : intelligence.scoreChange < 0 ? intelligence.scoreChange : '±0'} pts
+                  </span>
+                )}
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold text-slate-900">{intelligence?.score ?? lead?.score ?? 0}</span>
+                <span className="text-sm font-semibold text-slate-400">/ 100</span>
+              </div>
+              {/* Progress Bar */}
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 rounded-full ${
+                    (intelligence?.score ?? lead?.score ?? 0) >= 70
+                      ? 'bg-rose-500'
+                      : (intelligence?.score ?? lead?.score ?? 0) >= 40
+                      ? 'bg-amber-500'
+                      : 'bg-sky-500'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(0, intelligence?.score ?? lead?.score ?? 0))}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Metric 2: Engagement Temperature */}
+            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-2">
+              <div className="text-xs text-slate-500 font-medium uppercase tracking-wider">
+                Engagement Velocity
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">
+                  {(intelligence?.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')) === 'HOT'
+                    ? '🔥'
+                    : (intelligence?.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')) === 'WARM'
+                    ? '☀️'
+                    : '❄️'}
+                </span>
+                <div>
+                  <span className={`text-lg font-bold ${
+                    (intelligence?.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')) === 'HOT'
+                      ? 'text-rose-700'
+                      : (intelligence?.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')) === 'WARM'
+                      ? 'text-amber-700'
+                      : 'text-sky-700'
+                  }`}>
+                    {intelligence?.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')}
+                  </span>
+                  <p className="text-[11px] text-slate-500">
+                    {(intelligence?.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')) === 'HOT'
+                      ? 'High commercial intent (70–100)'
+                      : (intelligence?.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')) === 'WARM'
+                      ? 'Moderate prospect interest (40–69)'
+                      : 'Early/Cold relationship (0–39)'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Metric 3: Synchronized Priority */}
+            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-2">
+              <div className="text-xs text-slate-500 font-medium uppercase tracking-wider">
+                Synchronized Priority
+              </div>
+              <div className="flex items-center gap-2.5">
+                <Badge variant={PRIORITY_VARIANTS[lead.priority] || 'neutral'} className="text-xs font-bold px-2.5 py-1">
+                  {lead.priority}
+                </Badge>
+                <span className="text-xs text-slate-500">
+                  {lead.priority === 'URGENT'
+                    ? 'Immediate sales outreach'
+                    : lead.priority === 'HIGH'
+                    ? 'Active focus required'
+                    : lead.priority === 'MEDIUM'
+                    ? 'Standard follow-up cadence'
+                    : 'Nurture pipeline'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Automatically kept in sync with activity-driven score thresholds.
+              </p>
+            </div>
+          </div>
+
+          {/* Explainability Summary */}
+          {intelligence?.summaryText && (
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 flex items-start gap-2.5">
+              <Sparkles className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+              <div>
+                <span className="font-semibold text-slate-900 mr-1.5">Intelligence Rationale:</span>
+                <span>{intelligence.summaryText}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Activity Contributions & Capping Breakdown */}
+          {intelligence?.contributions && intelligence.contributions.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Activity Scoring Contributions & Anti-Inflation Caps
+                </h3>
+                <span className="text-[11px] text-slate-400">
+                  {intelligence.contributions.length} contributing signal type{intelligence.contributions.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {intelligence.contributions.map((c) => (
+                  <div
+                    key={c.type}
+                    className="p-3 bg-white border border-slate-200 rounded-xl space-y-1.5 shadow-2xs hover:border-indigo-200 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-900 truncate">
+                        {c.label || c.type}
+                      </span>
+                      <span className="text-xs font-bold text-indigo-600">
+                        +{c.points} pts
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span>{c.count} recorded event{c.count === 1 ? '' : 's'} (weight: +{c.weight})</span>
+                      {c.isCapped && (
+                        <Badge variant="warning" className="text-[9px] py-0 px-1">
+                          Capped at {c.maxPoints} pts
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Key Drivers / Reasons Bullets */}
+          {intelligence?.reasons && intelligence.reasons.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Scoring Signals Breakdown
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {intelligence.reasons.map((reason, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs bg-slate-100 text-slate-700 border border-slate-200"
+                  >
+                    • {reason}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Score Snapshot Timeline (Recent History) */}
+          {intelligence?.recentHistory && intelligence.recentHistory.length > 0 && (
+            <div className="space-y-3 pt-3 border-t border-slate-200">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">
+                <History className="w-3.5 h-3.5 text-slate-400" />
+                <span>Score History Snapshots ({intelligence.recentHistory.length})</span>
+              </div>
+
+              <div className="space-y-2">
+                {intelligence.recentHistory.map((snap) => (
+                  <div
+                    key={snap.id}
+                    className="p-3 bg-white border border-slate-100 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-extrabold text-sm px-2 py-0.5 rounded bg-slate-100 text-slate-900 border border-slate-200">
+                        {snap.score} pts
+                      </span>
+                      <span className="text-slate-600 line-clamp-1">{snap.reason || 'Recalculation snapshot'}</span>
+                    </div>
+
+                    <div className="text-slate-400 text-[11px] shrink-0">
+                      {new Date(snap.createdAt).toLocaleDateString()} at{' '}
+                      {new Date(snap.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

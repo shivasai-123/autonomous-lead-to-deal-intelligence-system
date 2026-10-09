@@ -248,12 +248,56 @@ Every failure response contains `success: false`, a high-level `message`, and an
 
 ---
 
-## 7. Future Endpoint Blueprint (Phase 6+)
+---
+
+## 7. Implemented Endpoints: Lead Intelligence & Scoring (Phase 6)
+
+### 7.1 Intelligence Profile & Explanation
+- `GET /api/leads/:id/intelligence`
+  - **Auth**: `Bearer <token>` (RBAC scoped: Rep can only view own or unassigned leads)
+  - **Description**: Returns explainable intelligence profile:
+    - `leadId`: Target lead ID
+    - `score`: Current deterministic engagement score (0–100)
+    - `classification`: Temperature rating (`HOT`, `WARM`, `COLD`)
+    - `priority`: Synchronized priority (`URGENT`, `HIGH`, `MEDIUM`, `LOW`)
+    - `scoreChange`: Delta between latest two score snapshots
+    - `isStalled`: Inactivity flag (true if inactive &ge; 14 days and non-terminal)
+    - `daysSinceLastActivity`: Elapsed days since latest recorded activity
+    - `lastActivityAt`: Timestamp of latest activity
+    - `stalledThresholdDays`: Configured threshold (14)
+    - `stalledReason`: Human-readable stalled status explanation
+    - `summaryText`: Synthesized intelligence rationale
+    - `contributions`: Granular array of activity contributions with raw points, weight, capped points, and anti-inflation cap status
+    - `reasons`: Bulleted scoring drivers
+    - `recentHistory`: Recent `LeadScore` snapshots
+  - **Response (`200 OK`)**: `{ success: true, message: "Lead intelligence retrieved successfully", data: { ... } }`
+
+### 7.2 Chronological Score History
+- `GET /api/leads/:id/score-history`
+  - **Auth**: `Bearer <token>` (RBAC scoped: Rep can only view own or unassigned leads)
+  - **Description**: Retrieves full chronological score history snapshots with structured JSON breakdowns and causal `sourceActivity` relation.
+  - **Response (`200 OK`)**: `{ success: true, message: "Score history retrieved successfully", data: { history: [...] } }`
+
+### 7.3 On-Demand Single Lead Recalculation
+- `POST /api/leads/:id/recalculate-score`
+  - **Auth**: `Bearer <token>` (Rep can recalculate own leads; Manager/Admin can recalculate any)
+  - **Description**: Idempotently re-evaluates all recorded activities, updates `Lead.score` and `Lead.priority`, persists `LeadScore` snapshot only on actual score change, and records `LEAD_SCORE_CHANGED` audit log.
+  - **Response (`200 OK`)**: `{ success: true, message: "Lead score recalculated successfully", data: { ... } }`
+
+### 7.4 Batch Score Recalculation
+- `POST /api/leads/recalculate-scores`
+  - **Auth**: `Bearer <token>` (Roles: `ADMIN`, `SALES_MANAGER` only; Reps receive `403 Forbidden`)
+  - **Description**: Recalculates intelligence profiles across all non-archived leads in database, syncing scores/priorities and recording `BATCH_SCORES_RECALCULATED` audit log.
+  - **Response (`200 OK`)**: `{ success: true, message: "Batch lead scores recalculated successfully", data: { totalProcessed, updatedCount, unchangedCount, errorCount, errors } }`
+
+---
+
+## 8. Future Endpoint Blueprint (Phase 7+)
 
 | Module | Method & Endpoint | Description | Phase | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **Pipeline & Deals** | `GET /api/pipeline/stages`, `POST /api/deals` | Full sales pipeline & opportunities | Phase 5 | **COMPLETED** |
-| **Intelligence** | `POST /api/leads/:id/score` | Trigger deterministic score recalculation | Phase 6 | Planned |
+| **Intelligence** | `GET /api/leads/:id/intelligence`, `POST /api/leads/recalculate-scores` | Explainable scoring, temperature & stalled detection | Phase 6 | **COMPLETED** |
 | **NBA Engine** | `GET /api/leads/:id/recommendations` | Get next-best-action recommendations | Phase 7 | Planned |
 | **AI Assistant** | `POST /api/ai/explain` | Generate AI explanation for recommendation | Phase 8 | Planned |
 | **AI Assistant** | `POST /api/ai/draft-email` | Generate personalized context-aware outreach | Phase 8 | Planned |

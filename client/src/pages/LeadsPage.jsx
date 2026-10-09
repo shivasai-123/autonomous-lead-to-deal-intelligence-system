@@ -19,7 +19,10 @@ import {
   UserCheck,
   X,
   CheckCircle2,
-  Info
+  Info,
+  Clock,
+  Flame,
+  Zap
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { crmService } from '../services/crm';
@@ -43,6 +46,24 @@ const PRIORITY_VARIANTS = {
   URGENT: 'danger',
 };
 
+const CLASSIFICATION_CONFIG = {
+  HOT: {
+    label: 'HOT',
+    icon: '🔥',
+    badgeClass: 'bg-rose-50 text-rose-700 border-rose-200'
+  },
+  WARM: {
+    label: 'WARM',
+    icon: '☀️',
+    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200'
+  },
+  COLD: {
+    label: 'COLD',
+    icon: '❄️',
+    badgeClass: 'bg-sky-50 text-sky-700 border-sky-200'
+  }
+};
+
 export function LeadsPage() {
   const { user } = useAuth();
   const isManagement = user?.role === 'ADMIN' || user?.role === 'SALES_MANAGER';
@@ -59,6 +80,9 @@ export function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [assignedFilter, setAssignedFilter] = useState('');
+  const [classificationFilter, setClassificationFilter] = useState('');
+  const [stalledFilter, setStalledFilter] = useState('');
+  const [recalculating, setRecalculating] = useState(false);
 
   // Dropdown reference data
   const [companies, setCompanies] = useState([]);
@@ -121,6 +145,8 @@ export function LeadsPage() {
           status: statusFilter || undefined,
           priority: priorityFilter || undefined,
           assignedToId: assignedFilter || undefined,
+          classification: classificationFilter || undefined,
+          isStalled: stalledFilter !== '' ? stalledFilter : undefined,
         };
         const res = await crmService.getLeads(params);
         if (res?.data) {
@@ -133,7 +159,7 @@ export function LeadsPage() {
         setLoading(false);
       }
     },
-    [search, statusFilter, priorityFilter, assignedFilter, pagination.limit]
+    [search, statusFilter, priorityFilter, assignedFilter, classificationFilter, stalledFilter, pagination.limit]
   );
 
   useEffect(() => {
@@ -154,6 +180,27 @@ export function LeadsPage() {
     setStatusFilter('');
     setPriorityFilter('');
     setAssignedFilter('');
+    setClassificationFilter('');
+    setStalledFilter('');
+  };
+
+  // Batch Recalculate Scores (Admin / Manager)
+  const handleBatchRecalculate = async () => {
+    try {
+      setRecalculating(true);
+      setError(null);
+      const res = await crmService.batchRecalculateScores();
+      const stats = res?.data?.data || res?.data || {};
+      setSuccessMessage(
+        `Batch recalculation complete: ${stats.totalProcessed ?? 0} leads processed (${stats.updatedCount ?? 0} updated, ${stats.unchangedCount ?? 0} unchanged).`
+      );
+      setTimeout(() => setSuccessMessage(null), 5000);
+      fetchLeads(pagination.page);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to recalculate lead scores');
+    } finally {
+      setRecalculating(false);
+    }
   };
 
   // Open Add Lead Modal
@@ -329,6 +376,19 @@ export function LeadsPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {isManagement && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBatchRecalculate}
+              disabled={loading || recalculating}
+              loading={recalculating}
+              icon={Zap}
+              title="Recalculate lead scores and engagement intelligence across all active leads"
+            >
+              Recalculate Scores
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -367,9 +427,9 @@ export function LeadsPage() {
       {/* Search and Filter Controls */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {/* Search Input */}
-            <div className="md:col-span-2 relative">
+            <div className="sm:col-span-2 relative">
               <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
               <input
                 type="text"
@@ -412,15 +472,44 @@ export function LeadsPage() {
               </select>
             </div>
 
-            {/* Assignee Filter (Management only) */}
+            {/* Engagement Temperature Filter (Phase 6) */}
+            <div>
+              <select
+                value={classificationFilter}
+                onChange={(e) => setClassificationFilter(e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+              >
+                <option value="">All Temperatures</option>
+                <option value="HOT">🔥 HOT (70–100)</option>
+                <option value="WARM">☀️ WARM (40–69)</option>
+                <option value="COLD">❄️ COLD (0–39)</option>
+              </select>
+            </div>
+
+            {/* Activity Status Filter (Phase 6) */}
+            <div>
+              <select
+                value={stalledFilter}
+                onChange={(e) => setStalledFilter(e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+              >
+                <option value="">All Touchpoints</option>
+                <option value="true">⏳ Stalled (≥14d)</option>
+                <option value="false">⚡ Active</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Sub-row: Assignee and Clear Filters */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-3 pt-3 border-t border-slate-100">
             {isManagement ? (
-              <div>
+              <div className="w-full sm:w-64">
                 <select
                   value={assignedFilter}
                   onChange={(e) => setAssignedFilter(e.target.value)}
                   className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
                 >
-                  <option value="">All Assignees</option>
+                  <option value="">All Sales Representatives</option>
                   {usersList.map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.firstName} {u.lastName}
@@ -428,14 +517,12 @@ export function LeadsPage() {
                   ))}
                 </select>
               </div>
-            ) : (
-              <div className="flex items-center justify-end">
-                {(search || statusFilter || priorityFilter) && (
-                  <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-                    Clear Filters
-                  </Button>
-                )}
-              </div>
+            ) : <div />}
+
+            {(search || statusFilter || priorityFilter || assignedFilter || classificationFilter || stalledFilter) && (
+              <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                Clear All Filters
+              </Button>
             )}
           </div>
         </CardContent>
@@ -452,8 +539,8 @@ export function LeadsPage() {
                 <th className="px-6 py-3 font-semibold">Status</th>
                 <th className="px-6 py-3 font-semibold">Priority</th>
                 <th className="px-6 py-3 font-semibold">Assigned Rep</th>
-                <th className="px-6 py-3 font-semibold">Signals</th>
-                <th className="px-6 py-3 font-semibold">Score</th>
+                <th className="px-6 py-3 font-semibold">Signals & Activity</th>
+                <th className="px-6 py-3 font-semibold">Temperature & Score</th>
                 <th className="px-6 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
@@ -552,9 +639,19 @@ export function LeadsPage() {
                       )}
                     </td>
 
-                    {/* Intelligence Signals */}
+                    {/* Intelligence Signals & Activity */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5 flex-wrap">
+                        {lead.isStalled && (
+                          <Badge
+                            variant="warning"
+                            className="text-[10px] gap-1 py-0.5 px-1.5 bg-amber-50 text-amber-800 border-amber-200"
+                            title={`No qualifying activity in ${lead.daysSinceLastActivity ?? 14} days`}
+                          >
+                            <Clock className="w-2.5 h-2.5" />
+                            Stalled ({lead.daysSinceLastActivity ?? 14}d)
+                          </Badge>
+                        )}
                         {lead.isDuplicate && (
                           <Badge variant="warning" className="text-[10px] gap-1 py-0 px-1.5" title="Duplicate detected">
                             <AlertTriangle className="w-2.5 h-2.5" />
@@ -571,16 +668,30 @@ export function LeadsPage() {
                             Suspicious
                           </Badge>
                         )}
-                        {!lead.isDuplicate && !lead.isSuspicious && (
-                          <span className="text-xs text-slate-400">-</span>
+                        {!lead.isStalled && !lead.isDuplicate && !lead.isSuspicious && (
+                          <span className="text-xs text-slate-400 font-medium">⚡ Active</span>
                         )}
                       </div>
                     </td>
 
-                    {/* Score */}
+                    {/* Temperature & Score */}
                     <td className="px-6 py-4">
-                      <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-xs">
-                        {lead.score ?? 0}
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold border ${
+                          CLASSIFICATION_CONFIG[lead.classification]?.badgeClass ||
+                          (lead.score >= 70
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : lead.score >= 40
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-sky-50 text-sky-700 border-sky-200')
+                        }`}
+                      >
+                        <span>
+                          {CLASSIFICATION_CONFIG[lead.classification]?.icon ||
+                            (lead.score >= 70 ? '🔥' : lead.score >= 40 ? '☀️' : '❄️')}
+                        </span>
+                        <span>{lead.classification || (lead.score >= 70 ? 'HOT' : lead.score >= 40 ? 'WARM' : 'COLD')}</span>
+                        <span className="font-extrabold text-slate-900 ml-0.5">({lead.score ?? 0})</span>
                       </span>
                     </td>
 

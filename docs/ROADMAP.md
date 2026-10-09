@@ -13,7 +13,7 @@ This roadmap outlines the complete 10-phase engineering lifecycle for the Autono
 | **PHASE 3** | Authentication & User Management | ✅ **COMPLETED** |
 | **PHASE 4** | CRM Core — Leads, Companies & Activities | ✅ **COMPLETED** |
 | **PHASE 5** | Sales Pipeline & Deal Management | ✅ **COMPLETED** |
-| **PHASE 6** | Lead Intelligence — Scoring, Priority & Automation | ⏳ **NOT IMPLEMENTED YET** |
+| **PHASE 6** | Lead Intelligence — Scoring, Priority & Automation | ✅ **COMPLETED** |
 | **PHASE 7** | Next-Best-Action Recommendation Engine | ⏳ **NOT IMPLEMENTED YET** |
 | **PHASE 8** | AI Features & Explanations | ⏳ **NOT IMPLEMENTED YET** |
 | **PHASE 9** | Dashboard, Analytics, Notifications & UI Polish | ⏳ **NOT IMPLEMENTED YET** |
@@ -110,12 +110,37 @@ This roadmap outlines the complete 10-phase engineering lifecycle for the Autono
 ---
 
 ### PHASE 6: Lead Intelligence — Scoring, Priority & Automation
-- **Status**: ⏳ **NOT IMPLEMENTED YET**
-- **Planned Scope**:
-  - Deterministic multi-factor lead scoring algorithm (Demographic Fit + Activity Frequency + Decay).
-  - Dynamic categorization: **Hot** (score &ge; 75), **Warm** (score 40–74), **Cold** (score &lt; 40).
-  - Stalled opportunity detection (inactivity timers, stagnant pipeline days).
-  - Automated stage suggestions triggered by engagement score spikes.
+- **Status**: ✅ **COMPLETED**
+- **Deliverables**:
+  - Prisma schema updated adding `breakdown Json?` to `LeadScore` model via migration `20261009061242_add_breakdown_to_lead_score`.
+  - Centralized scoring rules configuration (`server/src/config/scoring.config.js`) defining:
+    - Activity weights: `DEMO_REQUEST` (+25), `PRICING_PAGE_VIEW` (+10), `EMAIL_REPLY` (+10), `MEETING` (+10), `BROCHURE_DOWNLOAD` (+8), `FORM_SUBMISSION` (+8), `CALL` (+5), `WEBSITE_VISIT` (+2), `EMAIL_OPEN` (+1).
+    - Anti-inflation caps per activity type (e.g. `WEBSITE_VISIT` max 10 pts, `EMAIL_OPEN` max 5 pts, `PRICING_PAGE_VIEW` max 30 pts, `DEMO_REQUEST` max 50 pts).
+    - Strict score boundaries `[0, 100]`.
+    - Engagement classification thresholds: `HOT` (70–100), `WARM` (40–69), `COLD` (0–39).
+    - Priority synchronization thresholds: `URGENT` (85–100), `HIGH` (70–84), `MEDIUM` (40–69), `LOW` (0–39).
+    - Configured inactivity threshold: 14 days (`STALLED_THRESHOLD_DAYS`).
+  - Scoring & Intelligence service (`server/src/services/scoring.service.js`):
+    - `calculateScoreFromActivities()`: Deterministic, bounded calculation with contributions, caps, and human-readable explanation bullets.
+    - `detectStalledStatus()`: Real database timestamp analysis (last activity date vs now), excluding archived and terminal `CONVERTED`/`LOST` leads.
+    - `recalculateLeadScore()`: Idempotent recalculation updating `Lead.score` and `Lead.priority`, creating `LeadScore` snapshots with structured JSON breakdowns, and writing `LEAD_SCORE_CHANGED` audit logs.
+    - `getLeadIntelligence()`: Complete explainable intelligence profile retrieval with RBAC enforcement for Sales Reps.
+    - `batchRecalculateScores()`: Admin/Manager batch recalculation across active leads with `BATCH_SCORES_RECALCULATED` audit logging.
+  - Integration with core CRM:
+    - `POST /api/leads/:id/activities` automatically triggers real-time score recalculation and returns updated intelligence.
+    - `GET /api/leads` enhanced with `classification` (`HOT`, `WARM`, `COLD`) and `isStalled` (`true`, `false`) query filtering.
+  - Dedicated Intelligence Endpoints:
+    - `GET /api/leads/:id/intelligence`: Full intelligence profile, score breakdown, stalled status, and recent snapshots.
+    - `GET /api/leads/:id/score-history`: Chronological score snapshots with source activity details.
+    - `POST /api/leads/:id/recalculate-score`: On-demand single lead recalculation.
+    - `POST /api/leads/recalculate-scores`: Role-restricted batch recalculation (Admin & Sales Manager only; 403 for Reps).
+  - Responsive Frontend UI:
+    - `LeadsPage.jsx`: Engagement temperature badges (`🔥 HOT`, `☀️ WARM`, `❄️ COLD`), stalled status indicator badges (`⏳ Stalled (Xd)`), temperature and stalled query filters, and Admin/Manager "Recalculate Scores" button.
+    - `LeadDetailPage.jsx`: Dedicated **Lead Intelligence & Qualification Panel** with score progress gauge, engagement velocity status, synchronized priority badge, stalled alert banner, activity contributions grid with anti-inflation cap badges, key drivers breakdown, score snapshots history, and on-demand recalculate button.
+  - Automated Testing & Verification:
+    - 80 automated verification tests created and passing in `server/verify-intelligence.js` (`npm run test:intelligence`).
+    - 0 regressions across existing suites: `npm run test:health`, `npm run test:db`, `npm run test:auth`, `npm run test:crm`, `npm run test:pipeline`.
+    - Clean production client build (`npm run build:client`).
 
 ---
 

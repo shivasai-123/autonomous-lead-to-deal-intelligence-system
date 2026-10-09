@@ -28,8 +28,10 @@ export class ActivityController {
         return sendError(res, 'Invalid activity data', validation.errors, 400);
       }
 
-      const activity = await ActivityService.createActivity(leadId, req.body, req.user);
-      return sendSuccess(res, 'Lead activity recorded successfully', { activity }, 201);
+      const result = await ActivityService.createActivity(leadId, req.body, req.user);
+      const activity = result.activity || result;
+      const intelligence = result.intelligence || null;
+      return sendSuccess(res, 'Lead activity recorded successfully', { activity, intelligence }, 201);
     } catch (error) {
       next(error);
     }

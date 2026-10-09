@@ -219,6 +219,7 @@ model LeadScore {
   id        String   @id @default(uuid())
   score     Int
   reason    String
+  breakdown Json?
   createdAt DateTime @default(now())
 
   // Lead relation (Deleting a lead cascades scores)

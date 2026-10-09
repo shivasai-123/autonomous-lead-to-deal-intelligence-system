@@ -77,6 +77,7 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   ├── verify-auth.js           # Automated authentication & RBAC verification
 │   ├── verify-crm.js            # Automated CRM core & duplicate detection verification
 │   ├── verify-pipeline.js       # Automated sales pipeline & deal management verification
+│   ├── verify-intelligence.js   # Automated lead intelligence & scoring verification
 │   ├── .env.example
 │   └── package.json
 │
@@ -85,7 +86,7 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   ├── ARCHITECTURE.md          # System & application architecture
 │   ├── DATABASE_DESIGN.md       # Relational models, fields, delete rules & indexes
 │   ├── API_DESIGN.md            # REST API conventions & endpoints
-│   └── ROADMAP.md               # 10-Phase roadmap (Phases 1-4 completed)
+│   └── ROADMAP.md               # 10-Phase roadmap (Phases 1-6 completed)
 │
 ├── .gitignore                   # Git ignore rules
 ├── .env.example                 # Root environment template
@@ -172,7 +173,10 @@ npm run test:crm
 # 5. Verify all 18 sales pipeline, deal transition, conversion, and velocity tests
 npm run test:pipeline
 
-# 6. Verify client production build
+# 6. Verify all 80 lead intelligence, scoring, priority, and stalled detection tests
+npm run test:intelligence
+
+# 7. Verify client production build
 npm run build:client
 ```
 
@@ -185,6 +189,6 @@ npm run build:client
 
 ## 🗺️ Roadmap & Current Status
 
-This repository is currently at **PHASE 5: Sales Pipeline & Deal Management (COMPLETED)**.
+This repository is currently at **PHASE 6: Lead Intelligence — Scoring, Priority & Automation (COMPLETED)**.
 
 For detailed scope breakdowns of all 10 planned phases, refer to [`docs/ROADMAP.md`](./docs/ROADMAP.md).
