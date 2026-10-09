@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { LeadController } from '../controllers/lead.controller.js';
 import { ActivityController } from '../controllers/activity.controller.js';
+import { DealController } from '../controllers/deal.controller.js';
 import { requireAuth, requireRole } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -32,5 +33,8 @@ router.get('/:id/activities', ActivityController.listActivities);
 
 // POST /api/leads/:id/activities - Record new lead engagement event
 router.post('/:id/activities', ActivityController.createActivity);
+
+// POST /api/leads/:id/convert - Convert lead to commercial opportunity deal
+router.post('/:id/convert', DealController.convertLead);
 
 export default router;

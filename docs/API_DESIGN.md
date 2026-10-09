@@ -181,13 +181,78 @@ Every failure response contains `success: false`, a high-level `message`, and an
 
 ---
 
-## 6. Future Endpoint Blueprint (Phase 5+)
+## 6. Phase 5: Sales Pipeline & Deal Management Endpoints
+
+### 6.1 Pipeline Stages & Health (`/api/pipeline`)
+- `GET /api/pipeline/stages`
+  - **Auth**: `Bearer <token>` (All roles)
+  - **Description**: Returns all active pipeline stages ordered by `order asc`, including active deal counts and aggregate value per stage.
+  - **Response (`200 OK`)**: `{ success: true, message: "Pipeline stages retrieved successfully", data: { stages: [...] } }`
+- `PUT /api/pipeline/stages/reorder` / `PATCH /api/pipeline/stages/reorder`
+  - **Auth**: `Bearer <token>` (Roles: `ADMIN`, `SALES_MANAGER`)
+  - **Body**: `{ stageOrders: [{ id: "...", order: 1 }, { id: "...", order: 2 }, ...] }`
+  - **Behavior**: Atomically updates stage orders inside a PostgreSQL transaction using negative intermediate order offsets to prevent unique constraint collisions.
+  - **Audit**: Logs `PIPELINE_ORDER_CHANGED`.
+  - **Response (`200 OK`)**: `{ success: true, message: "Pipeline stages reordered successfully", data: { stages: [...] } }`
+- `GET /api/pipeline/metrics`
+  - **Auth**: `Bearer <token>` (Scoped to assigned deals for Sales Reps; all deals for Managers/Admins)
+  - **Description**: Computes real-time sales pipeline health metrics:
+    - `totalOpenDeals`: count of open opportunities
+    - `totalOpenPipelineValue`: sum of values of open deals
+    - `weightedPipelineValue`: sum of `(value * stage.probability / 100)` for open deals
+    - `wonDealsCount`: count of won deals
+    - `lostDealsCount`: count of lost deals
+    - `winRate`: `(wonDeals / (wonDeals + lostDeals)) * 100`
+    - `averageDealValue`: average value of active and won opportunities
+    - `stageVelocity`: average days spent per stage derived from `DealStageHistory`
+  - **Response (`200 OK`)**: `{ success: true, message: "Pipeline metrics calculated successfully", data: { ... } }`
+
+### 6.2 Deals Management (`/api/deals`)
+- `GET /api/deals`
+  - **Auth**: `Bearer <token>` (Sales reps scoped to assigned or unassigned; Managers/Admins view all)
+  - **Query Params**: `search`, `status` (`OPEN`, `WON`, `LOST`), `pipelineStageId`, `companyId`, `assignedToId`, `page`, `limit`, `sortBy`, `sortOrder`
+  - **Response (`200 OK`)**: `{ success: true, message: "Deals retrieved successfully", data: { deals: [...], pagination: { total, page, limit, totalPages } } }`
+- `POST /api/deals`
+  - **Auth**: `Bearer <token>` (All roles; sales reps auto-assign to self if unassigned)
+  - **Body**: `{ title: string, value: number, currency?: string, pipelineStageId: string, companyId?: string, assignedToId?: string, expectedCloseDate?: string, description?: string }`
+  - **Behavior**: In a transaction, creates `Deal`, creates initial `DealStageHistory` (`fromStageId: null`), sets status (`OPEN`, or `WON`/`LOST` if terminal stage), and logs `DEAL_CREATED` audit log.
+  - **Response (`201 Created`)**: `{ success: true, message: "Deal created successfully", data: { deal } }`
+- `GET /api/deals/:id`
+  - **Auth**: `Bearer <token>` (RBAC scoped: Rep can only view own or unassigned deals)
+  - **Description**: Retrieves full deal details with company, lead, assigned user, current stage, and complete chronological `stageHistory` timeline.
+  - **Response (`200 OK`)**: `{ success: true, message: "Deal retrieved successfully", data: { deal } }`
+- `PATCH /api/deals/:id`
+  - **Auth**: `Bearer <token>` (Sales reps can update own deals; only `ADMIN`/`SALES_MANAGER` can reassign `assignedToId`)
+  - **Body**: `{ title?, value?, currency?, expectedCloseDate?, description?, companyId?, assignedToId? }`
+  - **Audit**: Logs `DEAL_UPDATED`.
+  - **Response (`200 OK`)**: `{ success: true, message: "Deal updated successfully", data: { deal } }`
+- `PATCH /api/deals/:id/stage`
+  - **Auth**: `Bearer <token>` (Sales reps can transition own deals)
+  - **Body**: `{ stageId: string, transitionNote?: string }`
+  - **Terminal Lifecycle & RBAC Rules**:
+    - If target stage is `Won` (100%): sets `status = 'WON'`, sets `closedAt = now()`, logs `DEAL_WON`.
+    - If target stage is `Lost` (0%): sets `status = 'LOST'`, sets `closedAt = now()`, logs `DEAL_LOST`.
+    - If target stage is open and current deal is closed (`WON` or `LOST`): **Sales Reps are rejected with `403 Forbidden`** ("Only Sales Managers and Admins can reopen closed deals"); Managers/Admins reopen deal, setting `status = 'OPEN'` and `closedAt = null`.
+    - Appends entry to `DealStageHistory` recording `fromStageId`, `toStageId`, `userId`, `transitionNote`, and `enteredAt`.
+  - **Response (`200 OK`)**: `{ success: true, message: "Deal stage updated successfully", data: { deal } }`
+- `POST /api/leads/:id/convert` (also `POST /api/deals/convert`)
+  - **Auth**: `Bearer <token>` (Sales reps can convert own/unassigned leads)
+  - **Body**: `{ title: string, value: number, currency?: string, pipelineStageId?: string, expectedCloseDate?: string, description?: string }`
+  - **Behavior**: In a transaction:
+    - Verifies lead is not archived and not already converted (re-converting returns `400 Bad Request`).
+    - Updates lead `status = 'CONVERTED'`.
+    - Creates `Deal` linked to `lead.id` and associated company.
+    - Creates initial `DealStageHistory` entry.
+    - Logs `LEAD_CONVERTED` on Lead and `DEAL_CREATED` on Deal.
+  - **Response (`201 Created`)**: `{ success: true, message: "Lead successfully converted to deal", data: { deal, lead } }`
+
+---
+
+## 7. Future Endpoint Blueprint (Phase 6+)
 
 | Module | Method & Endpoint | Description | Phase | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **Pipeline** | `GET /api/pipeline/stages` | List configured pipeline stages | Phase 5 | Planned |
-| **Deals** | `POST /api/deals` | Convert qualified lead to deal | Phase 5 | Planned |
-| **Deals** | `PATCH /api/deals/:id/stage` | Advance deal pipeline stage | Phase 5 | Planned |
+| **Pipeline & Deals** | `GET /api/pipeline/stages`, `POST /api/deals` | Full sales pipeline & opportunities | Phase 5 | **COMPLETED** |
 | **Intelligence** | `POST /api/leads/:id/score` | Trigger deterministic score recalculation | Phase 6 | Planned |
 | **NBA Engine** | `GET /api/leads/:id/recommendations` | Get next-best-action recommendations | Phase 7 | Planned |
 | **AI Assistant** | `POST /api/ai/explain` | Generate AI explanation for recommendation | Phase 8 | Planned |

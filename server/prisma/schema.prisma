@@ -102,6 +102,7 @@ model User {
   assignedRecommendations Recommendation[] @relation("AssignedRecommendations")
   notifications           Notification[]   @relation("UserNotifications")
   auditLogs               AuditLog[]       @relation("UserAuditLogs")
+  stageTransitions        DealStageHistory[] @relation("StageHistoryUser")
 
   @@index([email])
   @@index([roleId])
@@ -243,7 +244,9 @@ model PipelineStage {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  deals Deal[]
+  deals        Deal[]
+  historyFrom  DealStageHistory[] @relation("HistoryFromStage")
+  historyTo    DealStageHistory[] @relation("HistoryToStage")
 
   @@index([order])
   @@map("pipeline_stages")
@@ -256,6 +259,7 @@ model Deal {
   value             Decimal    @db.Decimal(12, 2)
   currency          String     @default("USD")
   expectedCloseDate DateTime?
+  closedAt          DateTime?
   description       String?
   status            DealStatus @default(OPEN)
   createdAt         DateTime   @default(now())
@@ -277,12 +281,37 @@ model Deal {
   pipelineStageId String
   pipelineStage   PipelineStage @relation(fields: [pipelineStageId], references: [id], onDelete: Restrict)
 
+  // Chronological Stage Transition History
+  stageHistory DealStageHistory[]
+
   @@index([leadId])
   @@index([companyId])
   @@index([assignedToId])
   @@index([pipelineStageId])
   @@index([status])
   @@map("deals")
+}
+
+/// Chronological stage transitions tracking pipeline movements and stage velocity.
+model DealStageHistory {
+  id             String         @id @default(uuid())
+  dealId         String
+  deal           Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  fromStageId    String?
+  fromStage      PipelineStage? @relation("HistoryFromStage", fields: [fromStageId], references: [id], onDelete: SetNull)
+  toStageId      String
+  toStage        PipelineStage  @relation("HistoryToStage", fields: [toStageId], references: [id], onDelete: Restrict)
+  userId         String?
+  user           User?          @relation("StageHistoryUser", fields: [userId], references: [id], onDelete: SetNull)
+  transitionNote String?
+  enteredAt      DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+
+  @@index([dealId])
+  @@index([fromStageId])
+  @@index([toStageId])
+  @@index([enteredAt])
+  @@map("deal_stage_history")
 }
 
 /// Actionable Next-Best-Action intelligence items surfaced for sales reps.

@@ -9,6 +9,8 @@ import UsersPage from '../pages/UsersPage';
 import LeadsPage from '../pages/LeadsPage';
 import LeadDetailPage from '../pages/LeadDetailPage';
 import CompaniesPage from '../pages/CompaniesPage';
+import PipelinePage from '../pages/PipelinePage';
+import DealsPage from '../pages/DealsPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import ProtectedRoute from './ProtectedRoute';
 
@@ -53,6 +55,24 @@ export function AppRoutes() {
           element={
             <ProtectedRoute>
               <CompaniesPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Phase 5 Sales Pipeline & Deal Management Routes */}
+        <Route
+          path="pipeline"
+          element={
+            <ProtectedRoute>
+              <PipelinePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="deals"
+          element={
+            <ProtectedRoute>
+              <DealsPage />
             </ProtectedRoute>
           }
         />

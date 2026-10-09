@@ -106,6 +106,20 @@ export function LeadDetailPage() {
   const [usersList, setUsersList] = useState([]);
   const [editLoading, setEditLoading] = useState(false);
 
+  // Convert Lead to Deal Modal State (Phase 5)
+  const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
+  const [convertFormData, setConvertFormData] = useState({
+    title: '',
+    value: '',
+    currency: 'USD',
+    pipelineStageId: '',
+    expectedCloseDate: '',
+    description: '',
+  });
+  const [pipelineStages, setPipelineStages] = useState([]);
+  const [convertLoading, setConvertLoading] = useState(false);
+  const [convertError, setConvertError] = useState(null);
+
   // Fetch Lead & Activities
   const fetchLeadDetails = useCallback(async () => {
     setLoading(true);
@@ -156,6 +170,50 @@ export function LeadDetailPage() {
       assignedToId: lead.assignedToId || '',
     });
     setIsEditModalOpen(true);
+  };
+
+  const handleOpenConvert = async () => {
+    if (!lead) return;
+    setIsConvertModalOpen(true);
+    setConvertError(null);
+    try {
+      const res = await crmService.getPipelineStages();
+      const stages = res.data?.data?.stages || [];
+      setPipelineStages(stages);
+      setConvertFormData({
+        title: `${lead.firstName} ${lead.lastName} - Opportunity`,
+        value: '50000',
+        currency: 'USD',
+        pipelineStageId: stages[0]?.id || '',
+        expectedCloseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        description: `Opportunity converted from lead ${lead.firstName} ${lead.lastName}${lead.jobTitle ? ` (${lead.jobTitle})` : ''}`,
+      });
+    } catch (e) {
+      console.warn('Failed to load stages for convert modal:', e);
+    }
+  };
+
+  const handleConvertSubmit = async (e) => {
+    e.preventDefault();
+    if (!convertFormData.value || isNaN(Number(convertFormData.value)) || Number(convertFormData.value) < 0) {
+      setConvertError('Please enter a valid non-negative deal value');
+      return;
+    }
+    try {
+      setConvertLoading(true);
+      setConvertError(null);
+      await crmService.convertLeadToDeal(lead.id, {
+        ...convertFormData,
+        value: parseFloat(convertFormData.value),
+      });
+      setSuccessMessage('Lead successfully converted to commercial opportunity deal!');
+      setIsConvertModalOpen(false);
+      fetchLeadDetails();
+    } catch (err) {
+      setConvertError(err.response?.data?.message || err.message || 'Failed to convert lead');
+    } finally {
+      setConvertLoading(false);
+    }
   };
 
   const handleUpdateLeadSubmit = async (e) => {
@@ -287,6 +345,27 @@ export function LeadDetailPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {lead.status !== 'CONVERTED' ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleOpenConvert}
+              icon={Briefcase}
+            >
+              Convert to Deal
+            </Button>
+          ) : (
+            <Link to="/deals">
+              <Button
+                variant="outline"
+                size="sm"
+                icon={Briefcase}
+                className="text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
+              >
+                View Deal
+              </Button>
+            </Link>
+          )}
           <Button variant="outline" size="sm" onClick={handleOpenEdit} icon={Edit2}>
             Edit Lead
           </Button>
@@ -723,6 +802,148 @@ export function LeadDetailPage() {
                 </Button>
                 <Button type="submit" variant="primary" disabled={editLoading}>
                   {editLoading ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Convert Lead to Deal Modal (Phase 5) */}
+      {isConvertModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full border border-slate-200 overflow-hidden animate-in fade-in">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-brand-600" />
+                <h3 className="font-bold text-slate-900 text-base">Convert Lead to Opportunity</h3>
+              </div>
+              <button
+                onClick={() => setIsConvertModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConvertSubmit}>
+              <div className="p-6 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                {convertError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-lg flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>{convertError}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Deal Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={convertFormData.title}
+                    onChange={(e) => setConvertFormData({ ...convertFormData, title: e.target.value })}
+                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                      Estimated Deal Value ($) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={convertFormData.value}
+                      onChange={(e) => setConvertFormData({ ...convertFormData, value: e.target.value })}
+                      className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                      Currency
+                    </label>
+                    <select
+                      value={convertFormData.currency}
+                      onChange={(e) => setConvertFormData({ ...convertFormData, currency: e.target.value })}
+                      className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                    >
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="GBP">GBP (£)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Target Pipeline Stage *
+                  </label>
+                  <select
+                    value={convertFormData.pipelineStageId}
+                    onChange={(e) => setConvertFormData({ ...convertFormData, pipelineStageId: e.target.value })}
+                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                  >
+                    {pipelineStages.map((stg) => (
+                      <option key={stg.id} value={stg.id}>
+                        {stg.name} ({stg.probability}%)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Expected Close Date
+                  </label>
+                  <input
+                    type="date"
+                    value={convertFormData.expectedCloseDate}
+                    onChange={(e) => setConvertFormData({ ...convertFormData, expectedCloseDate: e.target.value })}
+                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Description & Deal Scope
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={convertFormData.description}
+                    onChange={(e) => setConvertFormData({ ...convertFormData, description: e.target.value })}
+                    className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+                  <p className="font-semibold">Conversion Effects:</p>
+                  <p className="mt-0.5">• Lead status will automatically be set to <span className="font-bold">CONVERTED</span>.</p>
+                  <p>• A new deal opportunity will be created in the selected pipeline stage.</p>
+                  <p>• Initial stage transition history and audit logs will be permanently recorded.</p>
+                </div>
+              </div>
+
+              <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsConvertModalOpen(false)}
+                  disabled={convertLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={convertLoading}
+                >
+                  {convertLoading ? 'Converting...' : 'Convert to Deal'}
                 </Button>
               </div>
             </form>

@@ -12,7 +12,7 @@ This roadmap outlines the complete 10-phase engineering lifecycle for the Autono
 | **PHASE 2** | Database Design & Prisma Setup | ✅ **COMPLETED** |
 | **PHASE 3** | Authentication & User Management | ✅ **COMPLETED** |
 | **PHASE 4** | CRM Core — Leads, Companies & Activities | ✅ **COMPLETED** |
-| **PHASE 5** | Sales Pipeline & Deal Management | ⏳ **NOT IMPLEMENTED YET** |
+| **PHASE 5** | Sales Pipeline & Deal Management | ✅ **COMPLETED** |
 | **PHASE 6** | Lead Intelligence — Scoring, Priority & Automation | ⏳ **NOT IMPLEMENTED YET** |
 | **PHASE 7** | Next-Best-Action Recommendation Engine | ⏳ **NOT IMPLEMENTED YET** |
 | **PHASE 8** | AI Features & Explanations | ⏳ **NOT IMPLEMENTED YET** |
@@ -91,13 +91,21 @@ This roadmap outlines the complete 10-phase engineering lifecycle for the Autono
 ---
 
 ### PHASE 5: Sales Pipeline & Deal Management
-- **Status**: ⏳ **NOT IMPLEMENTED YET**
-- **Planned Scope**:
-  - Configurable sales pipeline stages with velocity tracking.
-  - Lead-to-deal conversion engine with data validation.
-  - Deal progression across stages (Discovery &rarr; Demo &rarr; Proposal &rarr; Negotiation &rarr; Closed Won / Lost).
-  - Deal win probability calculations and revenue forecasting.
-  - Kanban board and table views for sales reps and managers.
+- **Status**: ✅ **COMPLETED**
+- **Deliverables**:
+  - Prisma schema extended with `DealStageHistory` model and `closedAt` field on `Deal`, migrated via `20261009050346_add_deal_stage_history_and_closed_at`.
+  - Implemented Pipeline Stage APIs: `GET /api/pipeline/stages`, `PUT /api/pipeline/stages/reorder`, `PATCH /api/pipeline/stages/reorder` with atomic order updating preventing unique collisions.
+  - Implemented Pipeline Health & Analytics: `GET /api/pipeline/metrics` computing open pipeline value, weighted value factoring probabilities, win rate %, average deal value, and chronological stage velocity.
+  - Implemented Deal Management APIs: `GET /api/deals`, `POST /api/deals`, `GET /api/deals/:id`, `PATCH /api/deals/:id`.
+  - Implemented Stage Transitions: `PATCH /api/deals/:id/stage` updating stage, transitioning terminal `WON`/`LOST` status with `closedAt` timestamps, logging `DealStageHistory`, and enforcing reopening guards (`403 Forbidden` for Sales Reps).
+  - Implemented Lead-to-Deal Conversion: `POST /api/leads/:id/convert` setting lead `status = 'CONVERTED'`, linking company and deal, recording initial stage entry, and creating audit trail (`LEAD_CONVERTED` and `DEAL_CREATED`).
+  - Built responsive frontend UI:
+    - `PipelinePage.jsx`: Interactive Kanban board with KPI banner, drag-and-drop between stages, deal quick selectors, stage transition note modal, and deal creation modal.
+    - `DealsPage.jsx`: Filterable, searchable data table with multi-attribute filtering, pagination, "Create Deal" modal, and comprehensive deal detail drawer featuring full chronological `DealStageHistory` timeline.
+    - `LeadDetailPage.jsx`: "Convert to Deal" button and modal connecting active leads to pipeline opportunities.
+    - `Sidebar.jsx` & `Navbar.jsx`: Enabled Sales Pipeline (`/pipeline`) and Deals & Revenue (`/deals`) navigation with Phase 5 branding.
+  - Built and verified 18 automated pipeline test cases (`npm run test:pipeline`).
+  - Verified 0 regressions across all suites (`npm run test:health`, `npm run test:db`, `npm run test:auth`, `npm run test:crm`, `npm run build:client`).
 
 ---
 

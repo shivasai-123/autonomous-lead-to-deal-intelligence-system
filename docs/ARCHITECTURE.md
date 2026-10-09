@@ -164,7 +164,43 @@ To preserve relational auditability, financial deal links, and activity historie
 
 ---
 
-## 6. Technology Rationale
+## 6. Sales Pipeline & Deal Management Architecture (Phase 5)
+
+### 6.1 Opportunity Lifecycle & Stage Machine
+Commercial opportunities flow through ordered stages defined in `PipelineStage`:
+1. `New` (10% win probability)
+2. `Contacted` (20% win probability)
+3. `Qualified` (40% win probability)
+4. `Demo` (60% win probability)
+5. `Proposal` (75% win probability)
+6. `Negotiation` (90% win probability)
+7. `Won` (100% win probability) - Terminal stage (`status = WON`, `closedAt = now()`)
+8. `Lost` (0% win probability) - Terminal stage (`status = LOST`, `closedAt = now()`)
+
+### 6.2 Atomic Stage Transitions & Velocity Tracking
+Every stage movement occurs inside a PostgreSQL `$transaction`:
+- The deal's `pipelineStageId`, `status`, and `closedAt` are updated.
+- A chronological `DealStageHistory` record is written, storing `dealId`, `fromStageId`, `toStageId`, `userId`, `transitionNote`, and `enteredAt`.
+- Audit logs record `DEAL_STAGE_CHANGED`, `DEAL_WON`, or `DEAL_LOST`.
+- **Reopening Guard**: Sales Reps are blocked from reverting `WON` or `LOST` deals back to open stages (`403 Forbidden`). Only Sales Managers and Admins can reopen closed deals, resetting `closedAt = null` and `status = 'OPEN'`.
+
+### 6.3 Lead-to-Deal Conversion
+When a qualified lead is converted via `POST /api/leads/:id/convert`:
+- Lead is validated (must be active and not previously converted).
+- Lead `status` is atomically set to `CONVERTED`.
+- A commercial `Deal` record is created linking `leadId`, `companyId`, and `assignedToId`.
+- An initial `DealStageHistory` entry is written with `fromStageId: null`.
+- Synchronous audit log records `LEAD_CONVERTED` and `DEAL_CREATED`.
+
+### 6.4 Pipeline Analytics & Stage Velocity
+- `totalOpenPipelineValue`: sum of open deal values.
+- `weightedPipelineValue`: sum of `(deal.value * stage.probability / 100)`.
+- `winRate`: `(wonCount / (wonCount + lostCount)) * 100`.
+- `stageVelocity`: average duration (in days) spent in each stage derived from historical transition records in `DealStageHistory`.
+
+---
+
+## 7. Technology Rationale
 
 | Technology | Selection Rationale |
 | :--- | :--- |
@@ -174,3 +210,4 @@ To preserve relational auditability, financial deal links, and activity historie
 | **PostgreSQL + Prisma** | Strict relational integrity, foreign key cascades, migration history, type-safe database queries. |
 | **bcryptjs + JWT** | Industry-standard password hashing and stateless authorization tokens with cross-platform stability. |
 | **OpenAI Integration** | Isolated as a backend service client (Phase 8), keeping AI logic transparent, testable, and secure. |
+

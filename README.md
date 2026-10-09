@@ -45,7 +45,7 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   │   ├── context/             # AppContext, AuthContext
 │   │   ├── hooks/               # useHealthCheck hook
 │   │   ├── layouts/             # RootLayout
-│   │   ├── pages/               # HomePage, DashboardPage, LoginPage, RegisterPage, UsersPage, LeadsPage, LeadDetailPage, CompaniesPage, NotFoundPage
+│   │   ├── pages/               # HomePage, DashboardPage, LoginPage, RegisterPage, UsersPage, LeadsPage, LeadDetailPage, CompaniesPage, PipelinePage, DealsPage, NotFoundPage
 │   │   ├── routes/              # AppRoutes, ProtectedRoute
 │   │   ├── services/            # Axios API client (api.js), Auth client (auth.js), CRM client (crm.js)
 │   │   ├── utils/               # Constants
@@ -64,18 +64,19 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   │   └── seed.js              # Database seed script (roles, stages, dev accounts)
 │   ├── src/
 │   │   ├── config/              # Environment config & Prisma client
-│   │   ├── controllers/         # Health, Auth, User, Company, Lead, Activity controllers
+│   │   ├── controllers/         # Health, Auth, User, Company, Lead, Activity, Pipeline, Deal controllers
 │   │   ├── middlewares/         # Central error handler, notFoundHandler, requireAuth, requireRole
-│   │   ├── routes/              # index.js, health, auth, user, company, lead routes
-│   │   ├── services/            # Health, Auth, User, Company, Lead, Activity, Duplicate, Audit services
+│   │   ├── routes/              # index.js, health, auth, user, company, lead, pipeline, deal routes
+│   │   ├── services/            # Health, Auth, User, Company, Lead, Activity, Duplicate, Pipeline, Deal, Audit services
 │   │   ├── utils/               # Structured logger, standardized API responses, password & token helpers
-│   │   ├── validators/          # auth, user, company, lead, activity validators
+│   │   ├── validators/          # auth, user, company, lead, activity, pipeline, deal validators
 │   │   ├── app.js               # Express app instance & middleware stack
 │   │   └── server.js            # HTTP server launch & graceful shutdown
 │   ├── verify-health.js         # Automated health diagnostic check
 │   ├── verify-db.js             # Automated database relational verification
-│   ├── verify-auth.js           # Automated 10-test authentication and RBAC suite
-│   ├── verify-crm.js            # Automated 18-test CRM Core and Intelligence suite
+│   ├── verify-auth.js           # Automated authentication & RBAC verification
+│   ├── verify-crm.js            # Automated CRM core & duplicate detection verification
+│   ├── verify-pipeline.js       # Automated sales pipeline & deal management verification
 │   ├── .env.example
 │   └── package.json
 │
@@ -168,7 +169,10 @@ npm run test:auth
 # 4. Verify all 18 CRM core endpoints, duplicate detection, and activity tracking
 npm run test:crm
 
-# 5. Verify client production build
+# 5. Verify all 18 sales pipeline, deal transition, conversion, and velocity tests
+npm run test:pipeline
+
+# 6. Verify client production build
 npm run build:client
 ```
 
@@ -181,6 +185,6 @@ npm run build:client
 
 ## 🗺️ Roadmap & Current Status
 
-This repository is currently at **PHASE 4: CRM Core — Leads, Companies & Activities (COMPLETED)**.
+This repository is currently at **PHASE 5: Sales Pipeline & Deal Management (COMPLETED)**.
 
 For detailed scope breakdowns of all 10 planned phases, refer to [`docs/ROADMAP.md`](./docs/ROADMAP.md).

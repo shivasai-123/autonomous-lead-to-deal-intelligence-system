@@ -47,7 +47,7 @@ export function Navbar() {
               </div>
             </Link>
             <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold bg-brand-50 text-brand-700 border border-brand-200 rounded">
-              Phase 4
+              Phase 5
             </span>
           </div>
 

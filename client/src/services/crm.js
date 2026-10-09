@@ -22,6 +22,20 @@ export const crmService = {
   createLeadActivity: (leadId, data) =>
     apiClient.post(`/leads/${leadId}/activities`, data),
 
+  // Pipeline & Stage APIs (Phase 5)
+  getPipelineStages: () => apiClient.get('/pipeline/stages'),
+  reorderPipelineStages: (stageOrders) => apiClient.put('/pipeline/stages/reorder', { stageOrders }),
+  getPipelineMetrics: () => apiClient.get('/pipeline/metrics'),
+
+  // Deal APIs (Phase 5)
+  getDeals: (params = {}) => apiClient.get('/deals', { params }),
+  getDeal: (id) => apiClient.get(`/deals/${id}`),
+  createDeal: (data) => apiClient.post('/deals', data),
+  updateDeal: (id, data) => apiClient.patch(`/deals/${id}`, data),
+  transitionDealStage: (id, stageId, transitionNote = '') =>
+    apiClient.patch(`/deals/${id}/stage`, { stageId, transitionNote }),
+  convertLeadToDeal: (leadId, data) => apiClient.post(`/leads/${leadId}/convert`, data),
+
   // Assignable users for dropdowns
   getAssignableUsers: () => apiClient.get('/users').catch(() => ({ data: { users: [] } })),
 };

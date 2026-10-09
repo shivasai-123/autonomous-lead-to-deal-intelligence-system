@@ -228,6 +228,7 @@ Commercial opportunities progressing through the pipeline stages.
 | `value` | `Decimal` | `@db.Decimal(12, 2)` | Commercial contract value (safe precision) |
 | `currency` | `String` | `@default("USD")` | ISO 4217 currency code |
 | `expectedCloseDate` | `DateTime?` | Nullable | Target closing date |
+| `closedAt` | `DateTime?` | Nullable | Terminal completion timestamp (`WON` or `LOST`) |
 | `description` | `String?` | Nullable | Scope and deal notes |
 | `status` | `DealStatus`| `@default(OPEN)` | Current deal state (`OPEN`, `WON`, `LOST`) |
 | `leadId` | `String?` | Foreign Key | Origin `Lead.id` |
@@ -242,7 +243,31 @@ Commercial opportunities progressing through the pipeline stages.
   - `company`: Belongs to `Company` (`onDelete: SetNull`).
   - `assignedTo`: Belongs to `User` (`onDelete: SetNull`).
   - `pipelineStage`: Belongs to `PipelineStage` (`onDelete: Restrict`).
+  - `stageHistory`: Has many `DealStageHistory` transitions (`onDelete: Cascade`).
 - **Indexes**: `@@index([leadId])`, `@@index([companyId])`, `@@index([assignedToId])`, `@@index([pipelineStageId])`, `@@index([status])`.
+
+---
+
+### 3.9 `DealStageHistory` (`deal_stage_history`)
+Chronological record of every stage transition across an opportunity's lifecycle, enabling stage velocity tracking, pipeline time-in-stage metrics, and transition auditing.
+
+| Field | Type | Attributes | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `String` | `@id @default(uuid())` | Unique UUID identifier |
+| `dealId` | `String` | Foreign Key | Target `Deal.id` |
+| `fromStageId` | `String?` | Foreign Key | Origin `PipelineStage.id` (null on initial creation) |
+| `toStageId` | `String` | Foreign Key | Destination `PipelineStage.id` |
+| `userId` | `String?` | Foreign Key | Actor `User.id` who performed transition |
+| `transitionNote` | `String?` | Nullable | Contextual explanation or win/loss rationale |
+| `enteredAt` | `DateTime` | `@default(now())` | Stage milestone entry timestamp |
+| `createdAt` | `DateTime` | `@default(now())` | Record insertion timestamp |
+
+- **Relations**:
+  - `deal`: Belongs to `Deal` (`onDelete: Cascade`).
+  - `fromStage`: Belongs to `PipelineStage` (`onDelete: SetNull`).
+  - `toStage`: Belongs to `PipelineStage` (`onDelete: Restrict`).
+  - `user`: Belongs to `User` (`onDelete: SetNull`).
+- **Indexes**: `@@index([dealId])`, `@@index([fromStageId])`, `@@index([toStageId])`, `@@index([enteredAt])`.
 
 ---
 
