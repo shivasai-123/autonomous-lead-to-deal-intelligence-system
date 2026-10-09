@@ -272,7 +272,7 @@ Chronological record of every stage transition across an opportunity's lifecycle
 
 ---
 
-### 3.9 `Recommendation` (`recommendations`)
+### 3.10 `Recommendation` (`recommendations`)
 Next-Best-Action guidance surfaced for sales representatives.
 
 | Field | Type | Attributes | Description |
@@ -283,15 +283,17 @@ Next-Best-Action guidance surfaced for sales representatives.
 | `explanation` | `String` | Required | Contextual explanation explaining *why* the action was suggested |
 | `confidence` | `Float?` | Nullable | Algorithmic confidence score (0.00 to 1.00) |
 | `status` | `RecommendationStatus` | `@default(PENDING)` | Current status (`PENDING`, `ACCEPTED`, `DISMISSED`, `EXECUTED`) |
+| `metadata` | `Json?` | Nullable | Structured JSON facts: rule ID, triggers, scores, transition history |
 | `leadId` | `String` | Foreign Key | Target `Lead.id` |
 | `assignedToId` | `String?` | Foreign Key | Target `User.id` |
 | `createdAt` | `DateTime` | `@default(now())` | Recommendation generation timestamp |
-| `expiresAt` | `DateTime?` | Nullable | Optional expiration window |
+| `updatedAt` | `DateTime` | `@updatedAt` | Last modification / state change timestamp |
+| `expiresAt` | `DateTime?` | Nullable | Optional expiration window (14 days default) |
 
 - **Relations**:
   - `lead`: Belongs to `Lead` (`onDelete: Cascade`).
   - `assignedTo`: Belongs to `User` (`onDelete: SetNull`).
-- **Indexes**: `@@index([leadId])`, `@@index([assignedToId])`, `@@index([status])`.
+- **Indexes**: `@@index([leadId])`, `@@index([leadId, status])`, `@@index([assignedToId])`, `@@index([status])`.
 
 ---
 

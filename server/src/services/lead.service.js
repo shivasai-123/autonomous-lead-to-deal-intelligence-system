@@ -2,6 +2,7 @@ import { getPrismaClient } from '../config/prisma.js';
 import { DuplicateService } from './duplicate.service.js';
 import { AuditService } from './audit.service.js';
 import { classifyScore, STALLED_THRESHOLD_DAYS } from '../config/scoring.config.js';
+import { RecommendationService } from './recommendation.service.js';
 
 export class LeadService {
   /**
@@ -364,6 +365,13 @@ export class LeadService {
       }
     });
 
+    // Safely generate initial Next-Best-Action recommendation for newly created lead
+    try {
+      await RecommendationService.generateOrUpdateRecommendation(lead.id, user);
+    } catch (recErr) {
+      console.error(`[RecommendationService] Failed to evaluate recommendation for lead ${lead.id}:`, recErr.message);
+    }
+
     return {
       lead,
       duplicateWarning: duplicateResults.isDuplicate ? duplicateResults : null,
@@ -519,6 +527,13 @@ export class LeadService {
       userId: user.id,
       metadata: { previousStatus: existing.status }
     });
+
+    // Safely dismiss any pending recommendations for archived lead
+    try {
+      await RecommendationService.dismissPendingForLead(id, 'Lead was archived', user);
+    } catch (recErr) {
+      console.error(`[RecommendationService] Failed to dismiss recommendations for archived lead ${id}:`, recErr.message);
+    }
 
     return { message: 'Lead successfully archived', lead: archived };
   }

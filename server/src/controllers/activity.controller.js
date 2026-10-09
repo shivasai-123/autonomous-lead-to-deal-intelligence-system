@@ -31,7 +31,8 @@ export class ActivityController {
       const result = await ActivityService.createActivity(leadId, req.body, req.user);
       const activity = result.activity || result;
       const intelligence = result.intelligence || null;
-      return sendSuccess(res, 'Lead activity recorded successfully', { activity, intelligence }, 201);
+      const recommendation = result.recommendation || null;
+      return sendSuccess(res, 'Lead activity recorded successfully', { activity, intelligence, recommendation }, 201);
     } catch (error) {
       next(error);
     }

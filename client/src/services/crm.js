@@ -42,6 +42,15 @@ export const crmService = {
     apiClient.patch(`/deals/${id}/stage`, { stageId, transitionNote }),
   convertLeadToDeal: (leadId, data) => apiClient.post(`/leads/${leadId}/convert`, data),
 
+  // Recommendation APIs (Phase 7)
+  getRecommendations: (params = {}) => apiClient.get('/recommendations', { params }),
+  getRecommendation: (id) => apiClient.get(`/recommendations/${id}`),
+  updateRecommendationStatus: (id, status, reason = null) =>
+    apiClient.patch(`/recommendations/${id}/status`, { status, reason }),
+  batchRefreshRecommendations: () => apiClient.post('/recommendations/batch-refresh'),
+  getLeadRecommendations: (leadId) => apiClient.get(`/leads/${leadId}/recommendations`),
+  generateLeadRecommendation: (leadId) => apiClient.post(`/leads/${leadId}/recommendations/generate`),
+
   // Assignable users for dropdowns
   getAssignableUsers: () => apiClient.get('/users').catch(() => ({ data: { users: [] } })),
 };

@@ -45,7 +45,7 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   │   ├── context/             # AppContext, AuthContext
 │   │   ├── hooks/               # useHealthCheck hook
 │   │   ├── layouts/             # RootLayout
-│   │   ├── pages/               # HomePage, DashboardPage, LoginPage, RegisterPage, UsersPage, LeadsPage, LeadDetailPage, CompaniesPage, PipelinePage, DealsPage, NotFoundPage
+│   │   ├── pages/               # HomePage, DashboardPage, LoginPage, RegisterPage, UsersPage, LeadsPage, LeadDetailPage, CompaniesPage, PipelinePage, DealsPage, RecommendationsPage, NotFoundPage
 │   │   ├── routes/              # AppRoutes, ProtectedRoute
 │   │   ├── services/            # Axios API client (api.js), Auth client (auth.js), CRM client (crm.js)
 │   │   ├── utils/               # Constants
@@ -63,13 +63,13 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   │   ├── schema.prisma        # Prisma relational models & datasource config
 │   │   └── seed.js              # Database seed script (roles, stages, dev accounts)
 │   ├── src/
-│   │   ├── config/              # Environment config & Prisma client
-│   │   ├── controllers/         # Health, Auth, User, Company, Lead, Activity, Pipeline, Deal controllers
+│   │   ├── config/              # Environment config, Prisma client, scoring & recommendation configs
+│   │   ├── controllers/         # Health, Auth, User, Company, Lead, Activity, Pipeline, Deal, Recommendation controllers
 │   │   ├── middlewares/         # Central error handler, notFoundHandler, requireAuth, requireRole
-│   │   ├── routes/              # index.js, health, auth, user, company, lead, pipeline, deal routes
-│   │   ├── services/            # Health, Auth, User, Company, Lead, Activity, Duplicate, Pipeline, Deal, Audit services
+│   │   ├── routes/              # index.js, health, auth, user, company, lead, pipeline, deal, recommendation routes
+│   │   ├── services/            # Health, Auth, User, Company, Lead, Activity, Duplicate, Pipeline, Deal, Scoring, Recommendation, Audit services
 │   │   ├── utils/               # Structured logger, standardized API responses, password & token helpers
-│   │   ├── validators/          # auth, user, company, lead, activity, pipeline, deal validators
+│   │   ├── validators/          # auth, user, company, lead, activity, pipeline, deal, recommendation validators
 │   │   ├── app.js               # Express app instance & middleware stack
 │   │   └── server.js            # HTTP server launch & graceful shutdown
 │   ├── verify-health.js         # Automated health diagnostic check
@@ -78,6 +78,7 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   ├── verify-crm.js            # Automated CRM core & duplicate detection verification
 │   ├── verify-pipeline.js       # Automated sales pipeline & deal management verification
 │   ├── verify-intelligence.js   # Automated lead intelligence & scoring verification
+│   ├── verify-recommendation.js # Automated Next-Best-Action recommendation verification
 │   ├── .env.example
 │   └── package.json
 │
@@ -176,7 +177,10 @@ npm run test:pipeline
 # 6. Verify all 80 lead intelligence, scoring, priority, and stalled detection tests
 npm run test:intelligence
 
-# 7. Verify client production build
+# 7. Verify all 82 Next-Best-Action recommendation and rule matrix tests
+npm run test:recommendation
+
+# 8. Verify client production build
 npm run build:client
 ```
 
@@ -189,6 +193,6 @@ npm run build:client
 
 ## 🗺️ Roadmap & Current Status
 
-This repository is currently at **PHASE 6: Lead Intelligence — Scoring, Priority & Automation (COMPLETED)**.
+This repository is currently at **PHASE 7: Next-Best-Action Recommendation Engine (COMPLETED)**.
 
 For detailed scope breakdowns of all 10 planned phases, refer to [`docs/ROADMAP.md`](./docs/ROADMAP.md).

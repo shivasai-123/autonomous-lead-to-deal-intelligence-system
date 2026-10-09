@@ -11,6 +11,7 @@ import LeadDetailPage from '../pages/LeadDetailPage';
 import CompaniesPage from '../pages/CompaniesPage';
 import PipelinePage from '../pages/PipelinePage';
 import DealsPage from '../pages/DealsPage';
+import RecommendationsPage from '../pages/RecommendationsPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import ProtectedRoute from './ProtectedRoute';
 
@@ -73,6 +74,16 @@ export function AppRoutes() {
           element={
             <ProtectedRoute>
               <DealsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Phase 7 Next-Best-Action Recommendation Route */}
+        <Route
+          path="recommendations"
+          element={
+            <ProtectedRoute>
+              <RecommendationsPage />
             </ProtectedRoute>
           }
         />

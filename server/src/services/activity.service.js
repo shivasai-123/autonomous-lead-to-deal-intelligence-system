@@ -1,6 +1,7 @@
 import { getPrismaClient } from '../config/prisma.js';
 import { AuditService } from './audit.service.js';
 import { ScoringService } from './scoring.service.js';
+import { RecommendationService } from './recommendation.service.js';
 
 export class ActivityService {
   /**
@@ -144,9 +145,19 @@ export class ActivityService {
       console.error(`[ScoringService] Score recalculation failed for lead ${leadId}:`, scoringErr.message);
     }
 
+    // Automatically evaluate & update Next-Best-Action recommendation
+    let recommendation = null;
+    try {
+      const recResult = await RecommendationService.generateOrUpdateRecommendation(leadId, user);
+      recommendation = recResult?.recommendation || null;
+    } catch (recErr) {
+      console.error(`[RecommendationService] Recommendation evaluation failed for lead ${leadId}:`, recErr.message);
+    }
+
     return {
       activity,
-      intelligence
+      intelligence,
+      recommendation
     };
   }
 }

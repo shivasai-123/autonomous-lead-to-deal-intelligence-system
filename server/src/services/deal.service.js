@@ -1,5 +1,6 @@
 import { getPrismaClient } from '../config/prisma.js';
 import { AuditService } from './audit.service.js';
+import { RecommendationService } from './recommendation.service.js';
 
 export class DealService {
   /**
@@ -708,6 +709,13 @@ export class DealService {
         }
       })
     ]);
+
+    // Safely auto-dismiss any pending recommendations for the converted lead
+    try {
+      await RecommendationService.dismissPendingForLead(lead.id, 'Lead converted to deal', user);
+    } catch (recErr) {
+      console.error(`[RecommendationService] Failed to dismiss recommendations for converted lead ${lead.id}:`, recErr.message);
+    }
 
     return {
       deal: {

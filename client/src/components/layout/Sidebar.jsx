@@ -28,7 +28,7 @@ export function Sidebar() {
     { label: 'Companies', to: '/companies', icon: Building2, enabled: true },
     { label: 'Sales Pipeline', to: '/pipeline', icon: GitBranch, enabled: true },
     { label: 'Deals & Revenue', to: '/deals', icon: Briefcase, enabled: true },
-    { label: 'Next-Best-Action', to: '/recommendations', icon: Sparkles, enabled: false, phase: 'Phase 7' },
+    { label: 'Next-Best-Action', to: '/recommendations', icon: Sparkles, enabled: true },
   ];
 
   return (

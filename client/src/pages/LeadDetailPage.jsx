@@ -31,7 +31,8 @@ import {
   Zap,
   TrendingUp,
   History,
-  Sparkles
+  Sparkles,
+  Check
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { crmService } from '../services/crm';
@@ -97,6 +98,11 @@ export function LeadDetailPage() {
   const [intelligence, setIntelligence] = useState(null);
   const [recalculatingScore, setRecalculatingScore] = useState(false);
 
+  // Next-Best-Action Recommendation State (Phase 7)
+  const [recommendations, setRecommendations] = useState([]);
+  const [evaluatingRecommendation, setEvaluatingRecommendation] = useState(false);
+  const [recActionLoading, setRecActionLoading] = useState(null);
+
   // Activities State
   const [activities, setActivities] = useState([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
@@ -136,9 +142,10 @@ export function LeadDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const [leadRes, intelRes] = await Promise.allSettled([
+      const [leadRes, intelRes, recRes] = await Promise.allSettled([
         crmService.getLead(id),
         crmService.getLeadIntelligence(id),
+        crmService.getLeadRecommendations(id),
       ]);
 
       if (leadRes.status === 'fulfilled' && leadRes.value?.data?.lead) {
@@ -153,6 +160,11 @@ export function LeadDetailPage() {
         if (intelData) {
           setIntelligence(intelData);
         }
+      }
+
+      if (recRes.status === 'fulfilled') {
+        const recList = recRes.value?.data?.data?.recommendations || recRes.value?.data?.recommendations || [];
+        setRecommendations(recList);
       }
     } catch (err) {
       setError(err.message || 'Failed to retrieve lead record');
@@ -336,6 +348,39 @@ export function LeadDetailPage() {
     }
   };
 
+  // Next-Best-Action Evaluation & Status Handlers (Phase 7)
+  const handleEvaluateRecommendation = async () => {
+    try {
+      setEvaluatingRecommendation(true);
+      await crmService.generateLeadRecommendation(id);
+      const res = await crmService.getLeadRecommendations(id);
+      const recList = res?.data?.data?.recommendations || res?.data?.recommendations || [];
+      setRecommendations(recList);
+      setSuccessMessage('Next-Best-Action recommendation re-evaluated.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to evaluate recommendation');
+    } finally {
+      setEvaluatingRecommendation(false);
+    }
+  };
+
+  const handleUpdateRecommendationStatus = async (recId, newStatus, reason = null) => {
+    try {
+      setRecActionLoading(recId);
+      await crmService.updateRecommendationStatus(recId, newStatus, reason);
+      const res = await crmService.getLeadRecommendations(id);
+      const recList = res?.data?.data?.recommendations || res?.data?.recommendations || [];
+      setRecommendations(recList);
+      setSuccessMessage(`Recommendation marked as ${newStatus.toLowerCase()}.`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to update recommendation status');
+    } finally {
+      setRecActionLoading(null);
+    }
+  };
+
   // Archive Lead
   const handleArchiveLead = async () => {
     if (!window.confirm('Are you sure you want to archive this lead? Historical activities will be preserved.')) return;
@@ -486,6 +531,161 @@ export function LeadDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Next-Best-Action Recommendation Panel (Phase 7) */}
+      <Card className="border-purple-200 bg-gradient-to-r from-purple-50/40 via-indigo-50/20 to-white shadow-sm overflow-hidden">
+        <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-purple-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-sm">
+              <Sparkles className="w-5 h-5 text-purple-100" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900">Next-Best-Action Recommendation</h2>
+                <Badge variant="primary" className="text-[10px] bg-purple-100 text-purple-800 border-purple-200">
+                  Deterministic NBA
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-500">
+                Rule-based guidance evaluated from real activities, engagement score, and pipeline velocity.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleEvaluateRecommendation}
+            disabled={evaluatingRecommendation}
+            loading={evaluatingRecommendation}
+            icon={RefreshCw}
+            className="text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+          >
+            Re-evaluate Action
+          </Button>
+        </div>
+
+        <CardContent className="p-5 space-y-4">
+          {recommendations.filter((r) => r.status === 'PENDING' || r.status === 'ACCEPTED').length > 0 ? (
+            recommendations
+              .filter((r) => r.status === 'PENDING' || r.status === 'ACCEPTED')
+              .map((rec) => {
+                const confidencePct = Math.round((rec.confidence || 0.8) * 100);
+                const isLoading = recActionLoading === rec.id;
+                return (
+                  <div
+                    key={rec.id}
+                    className="p-4 rounded-xl bg-white border border-purple-200 shadow-sm space-y-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-slate-900">{rec.title}</span>
+                        <Badge
+                          variant={rec.status === 'ACCEPTED' ? 'primary' : 'warning'}
+                          className="text-[10px] py-0 px-2"
+                        >
+                          {rec.status}
+                        </Badge>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800">
+                          {confidencePct}% Confidence
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-400">
+                        Type: {rec.type.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed">
+                      <span className="font-semibold text-slate-900 block mb-0.5">Why this action:</span>
+                      {rec.explanation}
+                    </p>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      {rec.status === 'PENDING' && (
+                        <>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            icon={Check}
+                            loading={isLoading}
+                            disabled={isLoading}
+                            onClick={() => handleUpdateRecommendationStatus(rec.id, 'ACCEPTED')}
+                            className="text-xs bg-indigo-600 hover:bg-indigo-700"
+                          >
+                            Accept Action
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            icon={CheckCircle2}
+                            loading={isLoading}
+                            disabled={isLoading}
+                            onClick={() => handleUpdateRecommendationStatus(rec.id, 'EXECUTED')}
+                            className="text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                          >
+                            Mark Executed
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={X}
+                            loading={isLoading}
+                            disabled={isLoading}
+                            onClick={() => handleUpdateRecommendationStatus(rec.id, 'DISMISSED', 'Dismissed by user')}
+                            className="text-xs text-rose-600 hover:bg-rose-50"
+                          >
+                            Dismiss
+                          </Button>
+                        </>
+                      )}
+
+                      {rec.status === 'ACCEPTED' && (
+                        <>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            icon={CheckCircle2}
+                            loading={isLoading}
+                            disabled={isLoading}
+                            onClick={() => handleUpdateRecommendationStatus(rec.id, 'EXECUTED')}
+                            className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            Complete Action
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={X}
+                            loading={isLoading}
+                            disabled={isLoading}
+                            onClick={() => handleUpdateRecommendationStatus(rec.id, 'DISMISSED', 'Dismissed after accept')}
+                            className="text-xs text-rose-600 hover:bg-rose-50"
+                          >
+                            Dismiss
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+          ) : (
+            <div className="flex items-center justify-between text-xs text-slate-500 bg-white p-3.5 rounded-xl border border-slate-200">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>
+                  {lead.status === 'CONVERTED' || lead.status === 'LOST' || lead.isArchived
+                    ? `No recommendations active (lead is ${lead.isArchived ? 'archived' : lead.status.toLowerCase()}).`
+                    : 'No pending action required. Lead cadence is current or awaiting customer response.'}
+                </span>
+              </div>
+              <Link to="/recommendations" className="text-purple-600 hover:underline font-semibold flex items-center gap-1">
+                View All Recommendations &rarr;
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Lead Intelligence & Qualification Panel (Phase 6) */}
       <Card className="border-indigo-100 bg-gradient-to-br from-white to-slate-50 shadow-sm overflow-hidden">

@@ -292,14 +292,89 @@ Every failure response contains `success: false`, a high-level `message`, and an
 
 ---
 
-## 8. Future Endpoint Blueprint (Phase 7+)
+## 8. Implemented Endpoints: Next-Best-Action Recommendation Engine (Phase 7)
+
+### 8.1 List Recommendations with Filtering & Metrics
+- `GET /api/recommendations`
+  - **Auth**: `Bearer <token>` (RBAC scoped: Rep can only view recommendations for assigned or unassigned leads; Admin/Manager view all)
+  - **Query Parameters**:
+    - `status`: Filter by status (`PENDING`, `ACCEPTED`, `DISMISSED`, `EXECUTED`)
+    - `type`: Filter by action type (`SCHEDULE_DEMO`, `REVIEW_STALLED_LEAD`, `CONTACT_LEAD`, `SEND_FOLLOW_UP`, `OTHER`)
+    - `search`: Search title, explanation, contact name, or company
+    - `page`, `limit`: Pagination parameters (default: page 1, limit 20)
+    - `sortBy`, `sortOrder`: Sorting field and direction (default: `createdAt` desc)
+  - **Response (`200 OK`)**:
+    ```json
+    {
+      "success": true,
+      "message": "Recommendations retrieved successfully",
+      "data": {
+        "data": [
+          {
+            "id": "uuid",
+            "type": "SCHEDULE_DEMO",
+            "title": "Schedule Product Demonstration",
+            "explanation": "Lead submitted a product demo request...",
+            "confidence": 0.95,
+            "status": "PENDING",
+            "metadata": { "ruleId": "RULE_SCHEDULE_DEMO", "trigger": "DEMO_REQUEST", "leadScore": 75 },
+            "createdAt": "2026-10-09T...",
+            "lead": { "id": "...", "firstName": "...", "lastName": "...", "company": { "name": "..." } },
+            "assignedTo": { "id": "...", "firstName": "..." }
+          }
+        ],
+        "pagination": { "page": 1, "limit": 20, "total": 1, "totalPages": 1 },
+        "metrics": {
+          "totalPending": 1,
+          "totalAccepted": 0,
+          "totalExecuted": 0,
+          "totalDismissed": 0,
+          "highConfidenceCount": 1
+        }
+      }
+    }
+    ```
+
+### 8.2 Get Single Recommendation Detail
+- `GET /api/recommendations/:id`
+  - **Auth**: `Bearer <token>` (RBAC verification enforced)
+  - **Response (`200 OK`)**: `{ success: true, message: "Recommendation retrieved successfully", data: { recommendation: { ... } } }`
+
+### 8.3 Transition Recommendation Status
+- `PATCH /api/recommendations/:id/status`
+  - **Auth**: `Bearer <token>`
+  - **Body**: `{ "status": "ACCEPTED" | "DISMISSED" | "EXECUTED", "reason": "Optional transition reason" }`
+  - **Description**: Validates state machine rules (`PENDING` -> `ACCEPTED`/`DISMISSED`, `ACCEPTED` -> `EXECUTED`/`DISMISSED`), updates metadata history, and records audit logs (`RECOMMENDATION_ACCEPTED`, `RECOMMENDATION_DISMISSED`, `RECOMMENDATION_EXECUTED`).
+  - **Response (`200 OK`)**: `{ success: true, message: "Recommendation marked as ACCEPTED", data: { recommendation: { ... } } }`
+
+### 8.4 Batch Recalculate Recommendations
+- `POST /api/recommendations/batch-refresh`
+  - **Auth**: `Bearer <token>` (Roles: `ADMIN`, `SALES_MANAGER` only; Reps receive `403 Forbidden`)
+  - **Description**: Re-evaluates Next-Best-Action recommendations across all active, non-archived leads in the CRM and logs `BATCH_RECOMMENDATIONS_REFRESHED`.
+  - **Response (`200 OK`)**: `{ success: true, message: "Batch recommendation evaluation completed across X leads.", data: { totalProcessed, generatedCount, reusedCount, errorsCount } }`
+
+### 8.5 Lead-Specific Recommendations
+- `GET /api/leads/:id/recommendations`
+  - **Auth**: `Bearer <token>` (RBAC scoped)
+  - **Description**: Lists all active and historical recommendations for a specific lead.
+  - **Response (`200 OK`)**: `{ success: true, message: "Lead recommendations retrieved successfully", data: { recommendations: [...] } }`
+
+- `POST /api/leads/:id/recommendations/generate`
+  - **Auth**: `Bearer <token>` (Rep can generate for assigned lead; Manager/Admin for any)
+  - **Description**: Force re-evaluates recommendation for specific lead on demand.
+  - **Response (`200 OK`)**: `{ success: true, message: "Lead recommendation evaluated successfully", data: { leadId, recommendation, action } }`
+
+---
+
+## 9. Future Endpoint Blueprint (Phase 8+)
 
 | Module | Method & Endpoint | Description | Phase | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **Pipeline & Deals** | `GET /api/pipeline/stages`, `POST /api/deals` | Full sales pipeline & opportunities | Phase 5 | **COMPLETED** |
 | **Intelligence** | `GET /api/leads/:id/intelligence`, `POST /api/leads/recalculate-scores` | Explainable scoring, temperature & stalled detection | Phase 6 | **COMPLETED** |
-| **NBA Engine** | `GET /api/leads/:id/recommendations` | Get next-best-action recommendations | Phase 7 | Planned |
+| **NBA Engine** | `GET /api/recommendations`, `PATCH /api/recommendations/:id/status` | Next-best-action recommendation engine | Phase 7 | **COMPLETED** |
 | **AI Assistant** | `POST /api/ai/explain` | Generate AI explanation for recommendation | Phase 8 | Planned |
 | **AI Assistant** | `POST /api/ai/draft-email` | Generate personalized context-aware outreach | Phase 8 | Planned |
 | **Analytics** | `GET /api/analytics/funnel` | Retrieve pipeline conversion metrics | Phase 9 | Planned |
 | **Notifications**| `GET /api/notifications` | Fetch user alert notifications | Phase 9 | Planned |
+

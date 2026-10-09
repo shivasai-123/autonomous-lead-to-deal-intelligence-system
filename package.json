@@ -19,6 +19,7 @@
     "test:crm": "npm run test:crm --workspace=server",
     "test:pipeline": "npm run test:pipeline --workspace=server",
     "test:intelligence": "npm run test:intelligence --workspace=server",
+    "test:recommendation": "npm run test:recommendation --workspace=server",
     "lint": "npm run lint --workspaces --if-present"
   },
   "devDependencies": {

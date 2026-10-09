@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { LeadController } from '../controllers/lead.controller.js';
 import { ActivityController } from '../controllers/activity.controller.js';
 import { DealController } from '../controllers/deal.controller.js';
+import { RecommendationController } from '../controllers/recommendation.controller.js';
 import { requireAuth, requireRole } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -48,5 +49,12 @@ router.post('/:id/activities', ActivityController.createActivity);
 
 // POST /api/leads/:id/convert - Convert lead to commercial opportunity deal
 router.post('/:id/convert', DealController.convertLead);
+
+// Lead Recommendations endpoints (Phase 7)
+// GET /api/leads/:id/recommendations - Get all recommendations for lead
+router.get('/:id/recommendations', RecommendationController.getLeadRecommendations);
+
+// POST /api/leads/:id/recommendations/generate - On-demand recommendation evaluation for lead
+router.post('/:id/recommendations/generate', RecommendationController.generateLeadRecommendation);
 
 export default router;

@@ -14,7 +14,7 @@ This roadmap outlines the complete 10-phase engineering lifecycle for the Autono
 | **PHASE 4** | CRM Core — Leads, Companies & Activities | ✅ **COMPLETED** |
 | **PHASE 5** | Sales Pipeline & Deal Management | ✅ **COMPLETED** |
 | **PHASE 6** | Lead Intelligence — Scoring, Priority & Automation | ✅ **COMPLETED** |
-| **PHASE 7** | Next-Best-Action Recommendation Engine | ⏳ **NOT IMPLEMENTED YET** |
+| **PHASE 7** | Next-Best-Action Recommendation Engine | ✅ **COMPLETED** |
 | **PHASE 8** | AI Features & Explanations | ⏳ **NOT IMPLEMENTED YET** |
 | **PHASE 9** | Dashboard, Analytics, Notifications & UI Polish | ⏳ **NOT IMPLEMENTED YET** |
 | **PHASE 10** | Testing, Security, Deployment & Documentation | ⏳ **NOT IMPLEMENTED YET** |
@@ -145,12 +145,41 @@ This roadmap outlines the complete 10-phase engineering lifecycle for the Autono
 ---
 
 ### PHASE 7: Next-Best-Action Recommendation Engine
-- **Status**: ⏳ **NOT IMPLEMENTED YET**
-- **Planned Scope**:
-  - Rules and heuristics engine for next-best-action generation.
-  - Action trigger triggers: e.g., follow-up after demo, re-engage cold lead, escalate stalled proposal.
-  - Recommendation priority queue for sales reps.
-  - Rep action feedback loop (Accept, Dismiss, Complete action).
+- **Status**: ✅ **COMPLETED**
+- **Deliverables**:
+  - Prisma schema updated adding `metadata Json?`, `updatedAt DateTime @updatedAt`, and compound index `@@index([leadId, status])` to `Recommendation` model via migration `20261009112947_add_metadata_to_recommendations`.
+  - Centralized Next-Best-Action configuration (`server/src/config/recommendation.config.js`) defining:
+    - Precedence Hierarchy: `SCHEDULE_DEMO` (1), `REVIEW_STALLED_LEAD` (2), `CONTACT_NEW_LEAD` (3), `SEND_FOLLOW_UP` (4), `CONVERT_TO_DEAL` (5).
+    - Deterministic confidence weights: Demo request (0.95), Stalled review (0.90), New lead contact (0.85), Deal conversion (0.82), Follow-up (0.80).
+    - Lifecycle State Machine & Allowed Transitions: `PENDING` -> `ACCEPTED` / `DISMISSED`, `ACCEPTED` -> `EXECUTED` / `DISMISSED`.
+    - Time-to-live threshold (14 days) and follow-up inactivity interval (3 days).
+  - Recommendation Service (`server/src/services/recommendation.service.js`):
+    - `evaluateLeadRecommendation()`: Deterministic, rule-based decision matrix evaluating real CRM events, scores, priority, and deal pipeline status.
+    - `generateOrUpdateRecommendation()`: Idempotent engine that reuses matching pending recommendations, supersedes obsolete advice, and prevents duplicates.
+    - Automatic Ineligibility Filtering: Leads that are archived (`isArchived = true`) or in terminal statuses (`CONVERTED`, `LOST`) automatically dismiss pending recommendations.
+    - `getRecommendations()`: Filterable, paginated query engine with multi-attribute filtering (status, type, search) and RBAC scoping (Sales Reps restricted to assigned/unassigned leads; Admins/Managers view all).
+    - `updateRecommendationStatus()`: Validates state transitions, records attribution and notes in metadata, and triggers corresponding audit events.
+    - `batchRefreshRecommendations()`: Admin/Manager batch recalculation across active leads with `BATCH_RECOMMENDATIONS_REFRESHED` audit logging.
+  - Core Workflow Automation Hooks:
+    - In `ActivityService.createActivity`: Automatically evaluates and returns recommendations upon logging engagement events.
+    - In `DealService.convertLeadToDeal`: Automatically dismisses pending recommendations when a lead converts into a deal.
+    - In `LeadService.createLead` & `LeadService.archiveLead`: Automatically generates initial recommendations upon lead creation and dismisses pending recommendations upon archiving.
+  - Dedicated Next-Best-Action Endpoints:
+    - `GET /api/recommendations`: Filterable, paginated recommendations feed with summary metrics.
+    - `GET /api/recommendations/:id`: Recommendation detail with RBAC verification.
+    - `PATCH /api/recommendations/:id/status`: Transition lifecycle status (`ACCEPTED`, `DISMISSED`, `EXECUTED`).
+    - `POST /api/recommendations/batch-refresh`: Role-restricted batch recalculation (Admin & Manager only).
+    - `GET /api/leads/:id/recommendations`: List recommendations for specific lead.
+    - `POST /api/leads/:id/recommendations/generate`: On-demand recommendation generation for specific lead.
+  - Responsive Frontend UI:
+    - `RecommendationsPage.jsx`: Top KPI metric cards (Pending Actions, High Confidence &ge; 85%, In Progress, Completed), multi-status tabs, search and action type filters, responsive recommendation cards with grounded explanations, confidence badges, lead/company metadata tags, action buttons (Accept, Mark Executed, Dismiss with reason modal, Reopen), and system-wide batch recalculation button.
+    - `LeadDetailPage.jsx`: Dedicated **Next-Best-Action Recommendation Panel** with confidence badge, grounded explanation, real-time action buttons, and on-demand re-evaluation trigger.
+    - `Sidebar.jsx` & `AppRoutes.jsx`: Activated Next-Best-Action navigation (`/recommendations`) with Sparkles icon.
+  - Automated Testing & Verification:
+    - 82 automated verification tests created and passing in `server/verify-recommendation.js` (`npm run test:recommendation`).
+    - 0 regressions across all suites: `npm run test:health`, `npm run test:db`, `npm run test:auth`, `npm run test:crm`, `npm run test:pipeline`, `npm run test:intelligence`.
+    - Clean production client build (`npm run build:client`).
+
 
 ---
 
