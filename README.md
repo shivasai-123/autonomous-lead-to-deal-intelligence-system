@@ -24,8 +24,9 @@ Traditional CRMs are static databases requiring endless manual data entry and gu
 | **Backend** | Node.js, Express.js (Modular REST API), Structured Logging |
 | **Authentication** | bcryptjs (Cost 12), JSON Web Tokens (JWT), Role-Based Authorization |
 | **Database** | PostgreSQL 18.6, Prisma ORM 5.22.0 (Relational schema, migrations, seed data) |
+| **AI Services** | OpenAI SDK (`openai` ^7.31.0), `gpt-4o-mini`, Structured JSON completions, Mock provider |
 | **Tooling** | npm Workspaces, dotenv, Concurrently |
-| **Future (Phases 8, 9)** | Socket.IO, OpenAI API, Recharts |
+| **Future (Phases 9, 10)** | Socket.IO, Recharts, Docker |
 
 ---
 
@@ -40,6 +41,7 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   ├── src/
 │   │   ├── assets/
 │   │   ├── components/
+│   │   │   ├── ai/              # AiAssistantPanel, AiExplanationModal
 │   │   │   ├── common/          # Reusable UI (Button, Card, Badge)
 │   │   │   └── layout/          # Layout UI (Navbar, Sidebar)
 │   │   ├── context/             # AppContext, AuthContext
@@ -63,13 +65,13 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   │   ├── schema.prisma        # Prisma relational models & datasource config
 │   │   └── seed.js              # Database seed script (roles, stages, dev accounts)
 │   ├── src/
-│   │   ├── config/              # Environment config, Prisma client, scoring & recommendation configs
-│   │   ├── controllers/         # Health, Auth, User, Company, Lead, Activity, Pipeline, Deal, Recommendation controllers
+│   │   ├── config/              # Environment config, Prisma client, scoring, recommendation & AI configs
+│   │   ├── controllers/         # Health, Auth, User, Company, Lead, Activity, Pipeline, Deal, Recommendation, AI controllers
 │   │   ├── middlewares/         # Central error handler, notFoundHandler, requireAuth, requireRole
-│   │   ├── routes/              # index.js, health, auth, user, company, lead, pipeline, deal, recommendation routes
-│   │   ├── services/            # Health, Auth, User, Company, Lead, Activity, Duplicate, Pipeline, Deal, Scoring, Recommendation, Audit services
+│   │   ├── routes/              # index.js, health, auth, user, company, lead, pipeline, deal, recommendation, ai routes
+│   │   ├── services/            # Health, Auth, User, Company, Lead, Activity, Duplicate, Pipeline, Deal, Scoring, Recommendation, AI, Audit services
 │   │   ├── utils/               # Structured logger, standardized API responses, password & token helpers
-│   │   ├── validators/          # auth, user, company, lead, activity, pipeline, deal, recommendation validators
+│   │   ├── validators/          # auth, user, company, lead, activity, pipeline, deal, recommendation, ai validators
 │   │   ├── app.js               # Express app instance & middleware stack
 │   │   └── server.js            # HTTP server launch & graceful shutdown
 │   ├── verify-health.js         # Automated health diagnostic check
@@ -79,6 +81,7 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   ├── verify-pipeline.js       # Automated sales pipeline & deal management verification
 │   ├── verify-intelligence.js   # Automated lead intelligence & scoring verification
 │   ├── verify-recommendation.js # Automated Next-Best-Action recommendation verification
+│   ├── verify-ai.js             # Automated AI features, summaries & sales assistance verification
 │   ├── .env.example
 │   └── package.json
 │
@@ -87,7 +90,7 @@ AUTONOMOUS LEAD-TO-DEAL INTELLIGENCE SYSTEM/
 │   ├── ARCHITECTURE.md          # System & application architecture
 │   ├── DATABASE_DESIGN.md       # Relational models, fields, delete rules & indexes
 │   ├── API_DESIGN.md            # REST API conventions & endpoints
-│   └── ROADMAP.md               # 10-Phase roadmap (Phases 1-6 completed)
+│   └── ROADMAP.md               # 10-Phase roadmap (Phases 1-8 completed)
 │
 ├── .gitignore                   # Git ignore rules
 ├── .env.example                 # Root environment template
@@ -124,7 +127,7 @@ cp server/.env.example server/.env
 cp client/.env.example client/.env
 ```
 
-Ensure `server/.env` contains your PostgreSQL `DATABASE_URL` and `JWT_SECRET`.
+Ensure `server/.env` contains your PostgreSQL `DATABASE_URL`, `JWT_SECRET`, and optional `OPENAI_API_KEY`.
 
 ### 3. Database Migration & Seeding
 
@@ -180,7 +183,10 @@ npm run test:intelligence
 # 7. Verify all 82 Next-Best-Action recommendation and rule matrix tests
 npm run test:recommendation
 
-# 8. Verify client production build
+# 8. Verify all 73 AI features, lead summaries, follow-up drafts & meeting prep tests
+npm run test:ai
+
+# 9. Verify client production build
 npm run build:client
 ```
 
@@ -193,6 +199,6 @@ npm run build:client
 
 ## 🗺️ Roadmap & Current Status
 
-This repository is currently at **PHASE 7: Next-Best-Action Recommendation Engine (COMPLETED)**.
+This repository is currently at **PHASE 8: AI Features, Lead Summaries & Intelligent Sales Assistance (COMPLETED)**.
 
 For detailed scope breakdowns of all 10 planned phases, refer to [`docs/ROADMAP.md`](./docs/ROADMAP.md).

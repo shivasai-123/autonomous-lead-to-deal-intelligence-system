@@ -51,6 +51,13 @@ export const crmService = {
   getLeadRecommendations: (leadId) => apiClient.get(`/leads/${leadId}/recommendations`),
   generateLeadRecommendation: (leadId) => apiClient.post(`/leads/${leadId}/recommendations/generate`),
 
+  // AI Features & Sales Assistance APIs (Phase 8)
+  getAiOptions: () => apiClient.get('/ai/options'),
+  generateLeadAiSummary: (leadId) => apiClient.post(`/ai/leads/${leadId}/summary`),
+  generateAiFollowUpDraft: (leadId, data) => apiClient.post(`/ai/leads/${leadId}/follow-up-draft`, data),
+  explainAiRecommendation: (recommendationId) => apiClient.post(`/ai/recommendations/${recommendationId}/explanation`),
+  generateAiMeetingPrep: (leadId, data) => apiClient.post(`/ai/leads/${leadId}/meeting-preparation`, data),
+
   // Assignable users for dropdowns
   getAssignableUsers: () => apiClient.get('/users').catch(() => ({ data: { users: [] } })),
 };

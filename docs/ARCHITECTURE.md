@@ -200,7 +200,45 @@ When a qualified lead is converted via `POST /api/leads/:id/convert`:
 
 ---
 
-## 7. Technology Rationale
+## 7. Next-Best-Action Recommendation Engine (Phase 7)
+Deterministic, rule-based recommendation matrix prioritizing high-impact sales workflows:
+1. `SCHEDULE_DEMO`: Triggered by direct demo requests or hot leads with pricing page interactions.
+2. `REVIEW_STALLED_LEAD`: Triggered by leads with no activity for &ge; 14 days.
+3. `CONTACT_NEW_LEAD`: Triggered by newly created leads awaiting initial contact.
+4. `SEND_FOLLOW_UP`: Triggered by high/medium priority leads inactive for &ge; 3 days.
+5. `CONVERT_TO_DEAL`: Triggered by qualified leads with high engagement.
+
+---
+
+## 8. AI Features & Intelligent Sales Assistance (Phase 8)
+
+### 8.1 Architecture & OpenAI SDK Isolation
+- **Backend Isolation**: OpenAI integration is strictly isolated in the backend service layer (`AIService`). The frontend never receives API keys or directly communicates with the OpenAI API.
+- **Configurable Model & Timeout**: Defaults to `gpt-4o-mini` with a 15-second timeout, configurable via `OPENAI_MODEL` and `OPENAI_TIMEOUT_MS`.
+- **Fail-Safe Graceful Fallback**: If `OPENAI_API_KEY` is omitted, the service returns `503 Service Unavailable` with a friendly explanation, guaranteeing zero impact on core CRM functions.
+- **Deterministic Mock Provider**: `AIService.setMockProvider(fn)` intercepts completions during automated testing, enabling 100% offline, zero-cost, deterministic CI verification.
+
+### 8.2 Security, Prompt-Injection Defense & Non-Destructive Invariants
+- **Prompt Injection Guard**: All CRM data (names, notes, activity descriptions) is passed as untrusted data strings within a strict system-prompt framing boundary (`PROMPT_INJECTION_DEFENSE_HEADER`).
+- **Structured JSON Output**: All chat completions enforce `response_format: { type: 'json_object' }` and validate response structure before returning.
+- **Token Caps**: Strict token ceilings limit compute costs:
+  - Lead Summary: 800 max tokens
+  - Follow-Up Draft: 600 max tokens
+  - Recommendation Explanation: 500 max tokens
+  - Meeting Prep Brief: 900 max tokens
+- **Non-Destructive Invariant**: AI is strictly assistive. It cannot modify lead status, alter lead scores, change deal stages, transition recommendation status, or send external communications.
+- **Zero Auto-Send Policy**: Outreach drafts are delivered to the frontend as editable drafts only; reps review and copy into their email client.
+
+### 8.3 RBAC & Data Ownership
+- Sales Representatives can only generate AI summaries, drafts, explanations, and meeting briefs for leads assigned to them or unassigned leads.
+- Access to another representative's lead is rejected with `403 Forbidden`.
+- Archived leads are rejected with `400 Bad Request`.
+- Sales Managers and Admins maintain organization-wide access.
+- Every generation event is auditable via PostgreSQL `AuditLog` (`AI_SUMMARY_GENERATED`, `AI_DRAFT_GENERATED`, `AI_EXPLANATION_GENERATED`, `AI_PREP_GENERATED`).
+
+---
+
+## 9. Technology Rationale
 
 | Technology | Selection Rationale |
 | :--- | :--- |
@@ -209,5 +247,5 @@ When a qualified lead is converted via `POST /api/leads/:id/convert`:
 | **Node.js / Express** | Lightweight, event-driven runtime ideal for RESTful I/O, easy integration with Prisma and future Socket.IO streams. |
 | **PostgreSQL + Prisma** | Strict relational integrity, foreign key cascades, migration history, type-safe database queries. |
 | **bcryptjs + JWT** | Industry-standard password hashing and stateless authorization tokens with cross-platform stability. |
-| **OpenAI Integration** | Isolated as a backend service client (Phase 8), keeping AI logic transparent, testable, and secure. |
+| **OpenAI SDK (`openai`)** | Isolated backend client with structured JSON parsing, prompt defenses, and injectable mock testing interface. |
 

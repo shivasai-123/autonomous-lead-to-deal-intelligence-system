@@ -33,7 +33,7 @@ The platform is designed around 14 loosely coupled modules:
 7. **Sales Pipeline & Stage Governance**: Configurable pipeline stages (Discovery, Demo, Proposal, Negotiation, Closed Won, Closed Lost) with entry/exit validation.
 8. **Deal Management**: Revenue forecasting, probability calculation, deal stage transitions, win/loss post-mortems.
 9. **Next-Best-Action (NBA) Engine**: Rule- and heuristic-based engine evaluating time-since-last-touch, score changes, and milestone events to suggest specific next steps.
-10. **AI Assistant & Recommendation Explanations**: Backend OpenAI integration providing clear, plain-language reasoning explaining *why* an action was recommended and generating personalized email drafts.
+10. **AI Assistant & Intelligent Sales Assistance (Phase 8 Completed)**: Backend OpenAI SDK integration providing grounded executive lead summaries, editable personalized outreach drafts, conversational recommendation coaching, and discovery call preparation briefs with strict prompt injection defenses and zero auto-send policy.
 11. **Real-Time Notifications**: Instant alerts for high-priority lead activity, status shifts, and manager approvals.
 12. **Executive Dashboard**: Unified metrics view displaying pipeline volume, active hot leads, high-velocity deals, and pending tasks.
 13. **Analytics & Velocity Reporting**: Conversion funnel analytics, sales velocity calculations, and team performance metrics.

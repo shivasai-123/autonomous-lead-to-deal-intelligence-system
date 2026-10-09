@@ -15,6 +15,7 @@
     "test:pipeline": "node verify-pipeline.js",
     "test:intelligence": "node verify-intelligence.js",
     "test:recommendation": "node verify-recommendation.js",
+    "test:ai": "node verify-ai.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed"
@@ -28,7 +29,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "openai": "^7.31.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.4",

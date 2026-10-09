@@ -39,6 +39,8 @@ import { crmService } from '../services/crm';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Card, CardHeader, CardContent } from '../components/common/Card';
+import { AiAssistantPanel } from '../components/ai/AiAssistantPanel';
+import { AiExplanationModal } from '../components/ai/AiExplanationModal';
 
 const ACTIVITY_ICONS = {
   CALL: PhoneCall,
@@ -102,6 +104,7 @@ export function LeadDetailPage() {
   const [recommendations, setRecommendations] = useState([]);
   const [evaluatingRecommendation, setEvaluatingRecommendation] = useState(false);
   const [recActionLoading, setRecActionLoading] = useState(null);
+  const [selectedRecForAi, setSelectedRecForAi] = useState(null);
 
   // Activities State
   const [activities, setActivities] = useState([]);
@@ -600,71 +603,83 @@ export function LeadDetailPage() {
                       {rec.explanation}
                     </p>
 
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      {rec.status === 'PENDING' && (
-                        <>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            icon={Check}
-                            loading={isLoading}
-                            disabled={isLoading}
-                            onClick={() => handleUpdateRecommendationStatus(rec.id, 'ACCEPTED')}
-                            className="text-xs bg-indigo-600 hover:bg-indigo-700"
-                          >
-                            Accept Action
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            icon={CheckCircle2}
-                            loading={isLoading}
-                            disabled={isLoading}
-                            onClick={() => handleUpdateRecommendationStatus(rec.id, 'EXECUTED')}
-                            className="text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                          >
-                            Mark Executed
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            icon={X}
-                            loading={isLoading}
-                            disabled={isLoading}
-                            onClick={() => handleUpdateRecommendationStatus(rec.id, 'DISMISSED', 'Dismissed by user')}
-                            className="text-xs text-rose-600 hover:bg-rose-50"
-                          >
-                            Dismiss
-                          </Button>
-                        </>
-                      )}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={Sparkles}
+                        onClick={() => setSelectedRecForAi(rec)}
+                        className="text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+                      >
+                        Explain with AI
+                      </Button>
 
-                      {rec.status === 'ACCEPTED' && (
-                        <>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            icon={CheckCircle2}
-                            loading={isLoading}
-                            disabled={isLoading}
-                            onClick={() => handleUpdateRecommendationStatus(rec.id, 'EXECUTED')}
-                            className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                          >
-                            Complete Action
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            icon={X}
-                            loading={isLoading}
-                            disabled={isLoading}
-                            onClick={() => handleUpdateRecommendationStatus(rec.id, 'DISMISSED', 'Dismissed after accept')}
-                            className="text-xs text-rose-600 hover:bg-rose-50"
-                          >
-                            Dismiss
-                          </Button>
-                        </>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {rec.status === 'PENDING' && (
+                          <>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              icon={Check}
+                              loading={isLoading}
+                              disabled={isLoading}
+                              onClick={() => handleUpdateRecommendationStatus(rec.id, 'ACCEPTED')}
+                              className="text-xs bg-indigo-600 hover:bg-indigo-700"
+                            >
+                              Accept Action
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon={CheckCircle2}
+                              loading={isLoading}
+                              disabled={isLoading}
+                              onClick={() => handleUpdateRecommendationStatus(rec.id, 'EXECUTED')}
+                              className="text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                            >
+                              Mark Executed
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={X}
+                              loading={isLoading}
+                              disabled={isLoading}
+                              onClick={() => handleUpdateRecommendationStatus(rec.id, 'DISMISSED', 'Dismissed by user')}
+                              className="text-xs text-rose-600 hover:bg-rose-50"
+                            >
+                              Dismiss
+                            </Button>
+                          </>
+                        )}
+
+                        {rec.status === 'ACCEPTED' && (
+                          <>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              icon={CheckCircle2}
+                              loading={isLoading}
+                              disabled={isLoading}
+                              onClick={() => handleUpdateRecommendationStatus(rec.id, 'EXECUTED')}
+                              className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                              Complete Action
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={X}
+                              loading={isLoading}
+                              disabled={isLoading}
+                              onClick={() => handleUpdateRecommendationStatus(rec.id, 'DISMISSED', 'Dismissed after accept')}
+                              className="text-xs text-rose-600 hover:bg-rose-50"
+                            >
+                              Dismiss
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -949,6 +964,9 @@ export function LeadDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Embedded Phase 8 AI Assistant Panel */}
+      <AiAssistantPanel lead={lead} onActivityLogged={fetchLeadDetails} />
 
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1492,6 +1510,13 @@ export function LeadDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Phase 8 AI Recommendation Explanation Modal */}
+      <AiExplanationModal
+        isOpen={!!selectedRecForAi}
+        onClose={() => setSelectedRecForAi(null)}
+        recommendation={selectedRecForAi}
+      />
     </div>
   );
 }

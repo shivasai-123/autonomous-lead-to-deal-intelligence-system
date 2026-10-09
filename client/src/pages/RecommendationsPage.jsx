@@ -30,6 +30,7 @@ import { crmService } from '../services/crm';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Card, CardContent } from '../components/common/Card';
+import { AiExplanationModal } from '../components/ai/AiExplanationModal';
 
 const TYPE_CONFIG = {
   SCHEDULE_DEMO: {
@@ -105,6 +106,7 @@ export function RecommendationsPage() {
     recommendationId: null,
     reason: ''
   });
+  const [selectedRecForAi, setSelectedRecForAi] = useState(null);
 
   const fetchRecommendations = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -539,6 +541,16 @@ export function RecommendationsPage() {
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={Sparkles}
+                      onClick={() => setSelectedRecForAi(rec)}
+                      className="text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+                    >
+                      Explain with AI
+                    </Button>
+
                     {rec.status === 'PENDING' && (
                       <>
                         <Button
@@ -701,6 +713,13 @@ export function RecommendationsPage() {
           </div>
         </div>
       )}
+
+      {/* Phase 8 AI Recommendation Explanation Modal */}
+      <AiExplanationModal
+        isOpen={!!selectedRecForAi}
+        onClose={() => setSelectedRecForAi(null)}
+        recommendation={selectedRecForAi}
+      />
     </div>
   );
 }

@@ -366,15 +366,150 @@ Every failure response contains `success: false`, a high-level `message`, and an
 
 ---
 
-## 9. Future Endpoint Blueprint (Phase 8+)
+---
+
+## 9. Implemented Endpoints: AI Features & Intelligent Sales Assistance (Phase 8)
+
+### 9.1 AI Configuration Options
+- `GET /api/ai/options`
+  - **Auth**: `Bearer <token>` (All authenticated users)
+  - **Description**: Returns supported tones, outreach objectives, and meeting types for UI dropdowns.
+  - **Response (`200 OK`)**:
+    ```json
+    {
+      "success": true,
+      "message": "AI options retrieved successfully",
+      "data": {
+        "tones": [{ "id": "PROFESSIONAL", "label": "Professional & Consultative" }, ...],
+        "objectives": [{ "id": "REQUEST_MEETING", "label": "Request introductory discovery meeting" }, ...],
+        "meetingTypes": [{ "id": "INITIAL_DISCOVERY", "label": "Initial Discovery Call" }, ...]
+      }
+    }
+    ```
+
+### 9.2 Grounded Executive Lead Summary
+- `POST /api/ai/leads/:id/summary`
+  - **Auth**: `Bearer <token>` (Sales Reps scoped to assigned/unassigned leads; Managers & Admins view all)
+  - **Description**: Synthesizes factual executive briefing grounded strictly in verified CRM records (company, timeline, score velocity, open deals). Fails with `400 Bad Request` on archived leads.
+  - **Audit**: Logs `AI_SUMMARY_GENERATED` with actor and model metadata.
+  - **Response (`200 OK`)**:
+    ```json
+    {
+      "success": true,
+      "message": "AI lead summary generated successfully",
+      "data": {
+        "summary": {
+          "overview": "string",
+          "notableEngagement": "string",
+          "salesPosition": "string",
+          "concernsOrGaps": "string",
+          "suggestedFocus": "string",
+          "leadId": "uuid",
+          "generatedAt": "ISO timestamp"
+        }
+      }
+    }
+    ```
+
+### 9.3 Personalized Follow-Up Email Draft
+- `POST /api/ai/leads/:id/follow-up-draft`
+  - **Auth**: `Bearer <token>` (RBAC scoped)
+  - **Body**:
+    ```json
+    {
+      "tone": "PROFESSIONAL",
+      "objective": "REQUEST_MEETING",
+      "additionalContext": "string (optional, max 500 chars)"
+    }
+    ```
+  - **Behavior**: Generates editable email draft. Strictly adheres to zero auto-send policy; no external communications or emails are dispatched automatically.
+  - **Audit**: Logs `AI_DRAFT_GENERATED`.
+  - **Response (`200 OK`)**:
+    ```json
+    {
+      "success": true,
+      "message": "AI follow-up draft generated successfully",
+      "data": {
+        "draft": {
+          "subject": "string",
+          "body": "string",
+          "channel": "EMAIL",
+          "tone": "PROFESSIONAL",
+          "objective": "REQUEST_MEETING",
+          "leadId": "uuid",
+          "generatedAt": "ISO timestamp"
+        }
+      }
+    }
+    ```
+
+### 9.4 Natural-Language Recommendation Explanation
+- `POST /api/ai/recommendations/:id/explanation`
+  - **Auth**: `Bearer <token>` (RBAC scoped: Reps restricted to assigned recommendations)
+  - **Behavior**: Enhances recommendation with natural-language context while preserving underlying deterministic rule facts (`originalExplanation`). Does not alter recommendation status or confidence.
+  - **Audit**: Logs `AI_EXPLANATION_GENERATED`.
+  - **Response (`200 OK`)**:
+    ```json
+    {
+      "success": true,
+      "message": "AI recommendation explanation generated successfully",
+      "data": {
+        "explanation": {
+          "recommendationId": "uuid",
+          "type": "RECOMMENDATION_TYPE",
+          "originalExplanation": "string (preserved source of truth)",
+          "aiExplanation": "string",
+          "actionRationale": "string",
+          "suggestedPreparation": "string",
+          "generatedAt": "ISO timestamp"
+        }
+      }
+    }
+    ```
+
+### 9.5 Meeting & Discovery Call Preparation Brief
+- `POST /api/ai/leads/:id/meeting-preparation`
+  - **Auth**: `Bearer <token>` (RBAC scoped)
+  - **Body**:
+    ```json
+    {
+      "meetingType": "INITIAL_DISCOVERY",
+      "notes": "string (optional, max 500 chars)"
+    }
+    ```
+  - **Description**: Generates executive preparation brief with high-value discovery questions, verified interests, and pre-call checklist.
+  - **Audit**: Logs `AI_PREP_GENERATED`.
+  - **Response (`200 OK`)**:
+    ```json
+    {
+      "success": true,
+      "message": "AI meeting preparation brief generated successfully",
+      "data": {
+        "prep": {
+          "prospectBrief": "string",
+          "keyInterests": ["string"],
+          "discoveryQuestions": ["string"],
+          "potentialConcerns": ["string"],
+          "dealContext": "string",
+          "checklist": ["string"],
+          "meetingType": "INITIAL_DISCOVERY",
+          "leadId": "uuid",
+          "generatedAt": "ISO timestamp"
+        }
+      }
+    }
+    ```
+
+---
+
+## 10. Future Endpoint Blueprint (Phase 9+)
 
 | Module | Method & Endpoint | Description | Phase | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **Pipeline & Deals** | `GET /api/pipeline/stages`, `POST /api/deals` | Full sales pipeline & opportunities | Phase 5 | **COMPLETED** |
 | **Intelligence** | `GET /api/leads/:id/intelligence`, `POST /api/leads/recalculate-scores` | Explainable scoring, temperature & stalled detection | Phase 6 | **COMPLETED** |
 | **NBA Engine** | `GET /api/recommendations`, `PATCH /api/recommendations/:id/status` | Next-best-action recommendation engine | Phase 7 | **COMPLETED** |
-| **AI Assistant** | `POST /api/ai/explain` | Generate AI explanation for recommendation | Phase 8 | Planned |
-| **AI Assistant** | `POST /api/ai/draft-email` | Generate personalized context-aware outreach | Phase 8 | Planned |
+| **AI Assistant** | `POST /api/ai/leads/:id/summary`, `POST /api/ai/leads/:id/follow-up-draft` | Grounded AI summaries, email drafts & meeting prep | Phase 8 | **COMPLETED** |
 | **Analytics** | `GET /api/analytics/funnel` | Retrieve pipeline conversion metrics | Phase 9 | Planned |
 | **Notifications**| `GET /api/notifications` | Fetch user alert notifications | Phase 9 | Planned |
 

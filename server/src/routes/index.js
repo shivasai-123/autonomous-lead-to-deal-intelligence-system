@@ -7,6 +7,7 @@ import leadRoutes from './lead.routes.js';
 import pipelineRoutes from './pipeline.routes.js';
 import dealRoutes from './deal.routes.js';
 import recommendationRoutes from './recommendation.routes.js';
+import aiRoutes from './ai.routes.js';
 
 const apiRouter = Router();
 
@@ -28,8 +29,10 @@ apiRouter.use('/deals', dealRoutes);
 // Phase 7 Next-Best-Action Recommendation Routes
 apiRouter.use('/recommendations', recommendationRoutes);
 
+// Phase 8 AI Features & Intelligent Sales Assistance Routes
+apiRouter.use('/ai', aiRoutes);
+
 // Modular mount points reserved for future phases:
-// apiRouter.use('/ai', aiRoutes);                   // Phase 8
 // apiRouter.use('/analytics', analyticsRoutes);     // Phase 9
 // apiRouter.use('/notifications', notificationRoutes); // Phase 9
 
